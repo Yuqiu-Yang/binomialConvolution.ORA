@@ -1,6 +1,7 @@
 
 
-curate_data <- function(passage_list)
+curate_data <- function(passage_list,
+                        measurement_type)
 {
   ora_list = list("human_ORA"=NA,
                   "ai_ORA"=NA)
@@ -29,3 +30,11 @@ curate_data <- function(passage_list)
 
 
 
+
+
+
+
+simulate <- function()
+{
+
+}
