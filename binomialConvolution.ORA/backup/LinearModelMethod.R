@@ -43,8 +43,14 @@ for (i in 1:10) {
   
   # Extract pi.hat and se values
   pi.hat <- c(mod$coefficients[1], 1 - mod$coefficients[2])
-  pi.se <- as.numeric(summary(mod)$coefficients[, 2])
+  #pi.se <- as.numeric(summary(mod)$coefficients[, 2])
   
+  Z <- matrix(cbind(X1,X2),ncol=2)
+  pi.tp <- pmin(pi.hat[1],1)
+  pi.tn <- pmin(pi.hat[2],1)
+  alpha.hat <- matrix(c(pi.tp*(1-pi.tp),pi.tn*(1-pi.tn)),nrow=2)
+  pi.se <- sqrt(diag(solve(t(Z)%*%Z) %*% t(Z) %*% diag(as.numeric(Z %*% alpha.hat)) %*% Z %*% solve(t(Z)%*%Z)))
+    
   # Combine the passage number, pi.hat, and se values into a single row
   result_row <- data.frame(Passage = i,
                            pi.tp = pi.hat[1],
@@ -62,7 +68,13 @@ X1 <- data$X
 X2 <- data$N - data$X
 mod_combined <- lm(Y~0+X1+X2)
 pi.hat <- c(mod_combined$coefficients[1],1-mod_combined$coefficients[2])
-pi.se <- as.numeric(summary(mod_combined)$coefficients[,2])
+#pi.se <- as.numeric(summary(mod)$coefficients[, 2])
+
+Z <- matrix(cbind(X1,X2),ncol=2)
+pi.tp <- pmin(pi.hat[1],1)
+pi.tn <- pmin(pi.hat[2],1)
+alpha.hat <- matrix(c(pi.tp*(1-pi.tp),pi.tn*(1-pi.tn)),nrow=2)
+pi.se <- sqrt(diag(solve(t(Z)%*%Z) %*% t(Z) %*% diag(as.numeric(Z %*% alpha.hat)) %*% Z %*% solve(t(Z)%*%Z)))
 
 result_row <- data.frame(Passage = "All",
                              pi.tp = pi.hat[1],
@@ -94,7 +106,13 @@ for (i in 1:10) {
   
   # Extract pi.hat and se values
   pi.hat <- c(mod$coefficients[1], 1 - mod$coefficients[2])
-  pi.se <- as.numeric(summary(mod)$coefficients[, 2])
+  #pi.se <- as.numeric(summary(mod)$coefficients[, 2])
+  
+  Z <- matrix(cbind(X1,X2),ncol=2)
+  pi.tp <- pmin(pi.hat[1],1)
+  pi.tn <- pmin(pi.hat[2],1)
+  alpha.hat <- matrix(c(pi.tp*(1-pi.tp),pi.tn*(1-pi.tn)),nrow=2)
+  pi.se <- sqrt(diag(solve(t(Z)%*%Z) %*% t(Z) %*% diag(as.numeric(Z %*% alpha.hat)) %*% Z %*% solve(t(Z)%*%Z)))
   
   # Combine the passage number, pi.hat, and se values into a single row
   result_row <- data.frame(Passage = i,
@@ -116,7 +134,13 @@ X1 <- data$X
 X2 <- data$N - data$X
 mod_combined <- lm(Y~0+X1+X2)
 pi.hat <- c(mod_combined$coefficients[1],1-mod_combined$coefficients[2])
-pi.se <- as.numeric(summary(mod_combined)$coefficients[,2])
+#pi.se <- as.numeric(summary(mod)$coefficients[, 2])
+
+Z <- matrix(cbind(X1,X2),ncol=2)
+pi.tp <- pmin(pi.hat[1],1)
+pi.tn <- pmin(pi.hat[2],1)
+alpha.hat <- matrix(c(pi.tp*(1-pi.tp),pi.tn*(1-pi.tn)),nrow=2)
+pi.se <- sqrt(diag(solve(t(Z)%*%Z) %*% t(Z) %*% diag(as.numeric(Z %*% alpha.hat)) %*% Z %*% solve(t(Z)%*%Z)))
 
 result_row <- data.frame(Passage = "All",
                          pi.tp = pi.hat[1],
