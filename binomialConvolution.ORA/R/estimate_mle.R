@@ -5,9 +5,9 @@ same_prob_likelihood <- function(par, passage_data)
 {
   probs = par_to_probs(par)
   sum_log = 0
-  for(r in 1 : nrow(df))
+  for(r in 1 : nrow(passage_data))
   {
-    n_trials = as.numeric(df[r, c("n1", "n2")])
+    n_trials = as.numeric(passage_data[r, c("n_positive", "n_negative")])
     if(n_trials[2] < 1)
     {
       keep = 1
@@ -29,15 +29,17 @@ same_prob_likelihood <- function(par, passage_data)
   }
   return(sum_log)
 }
+
+
 same_prob_profile_likelihood <- function(par,
-                                         df,
+                                         passage_data,
                                          fixed_success_probs,
                                          fixed_success_probs_index)
 {
   sum_log = 0
-  for(r in 1 : nrow(df))
+  for(r in 1 : nrow(passage_data))
   {
-    n_trials = as.numeric(df[r, c("n1", "n2")])
+    n_trials = as.numeric(passage_data[r, c("n_positive", "n_negative")])
     if(n_trials[2] < 1)
     {
       keep = 1

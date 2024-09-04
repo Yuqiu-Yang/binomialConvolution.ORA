@@ -1,6 +1,11 @@
 library(extraDistr)
 
-
+#'
+#' @param n_students Number of students. This is the number of observations you want to generate
+#' @param size
+#' @param prob
+#' @param overdispersion
+#' @return
 generate_counts_par <- function(n_students,
                                 size,
                                 prob,
@@ -22,7 +27,20 @@ generate_counts_par <- function(n_students,
   return(par_list)
 }
 
-
+#'
+#'
+#'
+#' @param positive_prob The probability of correct prounciation
+#' @param true_positive_prob
+#' @param true_negative_prob
+#' @param positive_overdispersion
+#' @param true_positive_overdispersion
+#' @param true_negative_overdispersion
+#' @param passage_name
+#' @param n_students
+#' @param n_words
+#' @return description
+#' @export
 generate_counts <- function(positive_prob,
                             true_positive_prob,
                             true_negative_prob,
