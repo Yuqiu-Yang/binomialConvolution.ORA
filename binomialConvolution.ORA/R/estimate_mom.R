@@ -2,13 +2,13 @@ library(dplyr)
 
 
 
-
 get_passage_moments <- function(passage_data,
                                 moments_to_compute=c("mXp", "vXp", "mYp", "vYp", "cXYp", "Np", "np"),
                                 flat=FALSE)
 {
   result = vector(mode='list', length = length(moments_to_compute))
   names(result) = moments_to_compute
+
   if("mXp" %in% moments_to_compute)
   {
     result$mXp = aggregate(passage_data$X, by=list(passage=passage_data$passage), FUN=mean)$x
@@ -117,8 +117,8 @@ estimate_mom <- function(passage_data)
   }
   CV = A %*% Omega %*% t(A)
   SE = sqrt(diag(CV))
-  result = c(prob_est, SE)
-  return(result)
+  return(list("pi.hat"=prob_est,
+              "pi.hat.est"=SE))
 }
 
 
@@ -180,7 +180,7 @@ estimate_gmm_helper <- function(par,passage_data,Emp.Mom,invOmega)
 
   Th.Mom = c(mu.X, var.X, mu.Y, var.Y, cov.XY)
 
-  D = n * as.numeric( t(Emp.Mom - Th.Mom) %*% invOmega %*% (Emp.Mom - Th.Mom) )
+  D = n * as.numeric(t(Emp.Mom - Th.Mom) %*% invOmega %*% (Emp.Mom - Th.Mom))
 
   return(D)
 
@@ -189,21 +189,22 @@ estimate_gmm_helper <- function(par,passage_data,Emp.Mom,invOmega)
 
 estimate_gmm <- function(passage_data)
 {
-  mom_est = estimate_mom(passage_data)
+  mom.est = estimate_mom(passage_data)
 
   P = length(unique(passage_data$passage))
 
   gmm_est = optim(c(get_passage_moments(passage_data, "mXp",T),
                     get_passage_moments(passage_data, "vXp",T),
-                    mom.ests$pi.hat),
+                    mom.est$pi.hat),
                     fn = estimate_gmm_helper,
                     passage_data = passage_data,
                     method = "L-BFGS-B",
                     lower = c(rep(0, 2*P),0,0),
                     upper = c(get_passage_moments(passage_data, "Np",T),rep(Inf, P),1,1),
                     hessian = TRUE)
-  result = c(gmm_est$par[c(3,4)], sqrt(diag(solve(gmm_est$hessian)))[c(3,4)])
-  return(result)
+
+  return(list("pi.hat"=gmm_est$par[c(2*P+1,2*P+2)],
+              "pi.hat.est"=sqrt(diag(solve(gmm_est$hessian)))[c(2*P+1,2*P+2)]))
 }
 
 
