@@ -53,68 +53,51 @@ estimate_mom <- function(passage_data)
   Y = passage_data$Y
   X = passage_data$X
   P = length(unique(passage_data$passage))
-  H = diag(P)/P - matrix(1, nrow=P, ncol=P)/(P^2)
 
-  passage_sample_moments = get_passage_moments(passage_data=passage_data,
-                                               moments_to_compute=c("mXp", "vXp", 'Np', "np"))
+  passage_data$passage = factor(passage_data$passage)
 
-  mX = mean(passage_sample_moments$mXp)
-  N = mean(passage_sample_moments$Np)
+  # For each passage we compute the passage length and sample size
+  Np = aggregate(passage_data$N, by=list(passage=passage_data$passage), FUN=function(x)x[1])$x
+  np = aggregate(passage_data$passage, by=list(passag=passage_data$passage), FUN=function(x)length(x))$x
+  # based on this we can compute the weights
+  wp = Np*np/(sum(Np*np))
 
-  vX = mean(passage_sample_moments$vXp)
-  sigma1 = as.numeric(vX + t(passage_sample_moments$mXp) %*% H %*% (passage_sample_moments$mXp))
-  sigma2 = as.numeric(t(passage_sample_moments$mXp) %*% H %*% (passage_sample_moments$Np-passage_sample_moments$mXp) - vX)
+  # Then we compute for each passage the sample mean variance covariance
+  mXp = aggregate(passage_data$X, by=list(passage=passage_data$passage), FUN=mean)$x
+  vXp = aggregate(passage_data$X, by=list(passage=passage_data$passage), FUN=var)$x
+  mYp = aggregate(passage_data$Y, by=list(passage=passage_data$passage), FUN=mean)$x
+  # vYp = aggregate(passage_data$Y, by=list(passage=passage_data$passage), FUN=var)$x
+  cov = passage_data %>% group_by(passage) %>% summarise(sig=cov(X,Y))
+  cXYp = cov$sig
 
-  cXY = cov(X,Y)
-  mY = mean(Y)
+  mX = sum(mXp * wp)
+  vX = sum(vXp * wp)
+  cXY = sum(cXYp * wp)
+  N = sum(Np * wp)
+  mY = sum(mYp * wp)
 
-  true_negative_prob = 1 - (mY-cXY*mX/sigma1)/(N-mX*(1+sigma2/sigma1))
-  true_positive_prob = cXY/sigma1 - (sigma2/sigma1)*(1-true_negative_prob)
+  true_positive_prob = mY/N + cXY/vX*(1-mX/N)
+  true_negative_prob = (1-mY/N) + cXY/vX*mX/N
 
-  # true_positive_prob = mY/N + cXY/vX*(1-mX/N)
-  # true_negative_prob = (1-mY/N) + cXY/vX*mX/N
   prob_est = c(true_positive_prob, true_negative_prob)
 
-  if(P > 1)
+  Omega = matrix(0, nrow=4, ncol=4)
+  counter = 1
+  for(p in levels(passage_data$passage))
   {
-    bootstrap_sample = bootstrap_passages(passage_data=passage_data,
-                                          true_positive_prob=NA,
-                                          true_negative_prob=NA,
-                                          sample_prob=1)
-    mXs = bind_rows(lapply(bootstrap_sample, FUN=get_passage_moments, moments_to_compute=c("mXp"), flat=T))
-    temp = lapply(bootstrap_sample, FUN=get_passage_moments, moments_to_compute=c("vXp"), flat=T)
-    vXs = sapply(temp, FUN=mean)
-    mYs = sapply(bootstrap_sample, FUN=function(df) {return(mean(df$Y))})
-    cXYs = sapply(bootstrap_sample, FUN=function(df) {return(cov(df$X, df$Y))})
-    data_omega = cbind(mXs, vXs, mYs, cXYs)
-    Omega = cov(data_omega)
-
-    partial_tn_mX=-(-cXY*(1/(P*sigma1)-2*mX*(t(passage_sample_moments$mXp)%*%H)/(sigma1^2))/(N-mX*(1-sigma2/sigma1)) +
-      (mY-cXY*mX/sigma1)/(-(N-mX*(1-sigma2/sigma1))^2)*(-(1/P*(1+sigma2/sigma1)+mX*((t(passage_sample_moments$Np)%*%H-2*t(passage_sample_moments$mXp)%*%H)/sigma1-
-                                                                                      2*sigma2/(sigma1)^2*t(passage_sample_moments$mXp)%*%H))))
-    partial_tp_mX=-2*cXY*(t(passage_sample_moments$mXp)%*%H)/(sigma1^2) - (((t(passage_sample_moments$Np)%*%H-2*t(passage_sample_moments$mXp)%*%H)/sigma1-
-                                                                               2*sigma2/(sigma1)^2*t(passage_sample_moments$mXp)%*%H)*((mY-cXY*mX/sigma1)/(N-mX*(1+sigma2/sigma1)))+
-                                                                               (sigma2/sigma1)*(-partial_tn_mX))
-
-    partial_tn_vX=-(cXY*mX/(sigma1^2)/(N-mX*(1+sigma2/sigma1))-((mY-cXY*mX/sigma1)/(N-mX*(1+sigma2/sigma1))^2)*(mX*(1/sigma1+sigma2/(sigma1^2))))
-    partial_tp_vX=-cXY/(sigma1^2)-((-1/sigma1-sigma2/(sigma1)^2)*(mY-cXY*mX/sigma1)/(N-mX*(1+sigma2/sigma1)) + (sigma2/sigma1)*(-partial_tn_vX))
-
-    partial_tn_mY = -1/(N-mX*(1+sigma2/sigma1))
-    partial_tp_mY = sigma2/sigma1*partial_tn_mY
-
-    partial_tn_cXY = mX/sigma1/(N-mX*(1+sigma2/sigma1))
-    partial_tp_cXY = 1/sigma1+sigma2/sigma1*partial_tn_cXY
-
-    A = rbind(c(partial_tp_mX, partial_tp_vX, partial_tp_mY, partial_tp_cXY),
-              c(partial_tn_mX, partial_tn_vX, partial_tn_mY, partial_tn_cXY))
-  }else{
-    data_omega = cbind(X,Y,(X-mX)^2,(X-mX)*(Y-mY))
-    Omega = cov(data_omega)/np
-    A = rbind(
-      c(-1/N*cXY/vX, 1/N, -cXY/vX^2*(1-mX/N),1/vX*(1-mX/N)),
-      c(1/N*cXY/vX, -1/N, -cXY/vX^2*mX/N,1/vX*mX/N)
-    )
+    ind = which(passage_data$passage == p)
+    data_omega = cbind(X[ind], Y[ind],
+                       (X[ind] - mXp[counter])^2,
+                       (X[ind]-mXp[counter])*(Y[ind]-mYp[counter]))
+    Omega = Omega + cov(data_omega)/(np[counter]) * (wp[counter]^2)
+    counter = counter + 1
   }
+
+  A = rbind(
+    c(-1/N*cXY/vX, 1/N, -cXY/vX^2*(1-mX/N),1/vX*(1-mX/N)),
+    c(1/N*cXY/vX, -1/N, -cXY/vX^2*mX/N,1/vX*mX/N)
+  )
+
   CV = A %*% Omega %*% t(A)
   SE = sqrt(diag(CV))
   return(list("pi.hat"=prob_est,
@@ -130,7 +113,7 @@ estimate_gmm_helper <- function(par,passage_data,Emp.Mom,invOmega)
   # and scalar items N and n
   Y = passage_data$Y
   X = passage_data$X
-  N = unname(get_passage_moments(passage_data, "Np", flat=T))
+  Np = aggregate(passage_data$N, by=list(passage=passage_data$passage), FUN=function(x)x[1])$x
 
 
   n_nuisance_par = length(par)-2
@@ -144,13 +127,17 @@ estimate_gmm_helper <- function(par,passage_data,Emp.Mom,invOmega)
     var.X * (pi.tp + pi.tn - 1)^2
   cov.XY = var.X * (pi.tp + pi.tn - 1)
 
-
-
   n = nrow(passage_data)
 
   if (missing(Emp.Mom)) {
-    Emp.Mom = unname(get_passage_moments(passage_data,
-                                  moments_to_compute=c("mXp", "vXp", "mYp", 'vYp', 'cXYp'), flat=T))
+    # Then we compute for each passage the sample mean variance covariance
+    mXp = aggregate(passage_data$X, by=list(passage=passage_data$passage), FUN=mean)$x
+    vXp = aggregate(passage_data$X, by=list(passage=passage_data$passage), FUN=var)$x
+    mYp = aggregate(passage_data$Y, by=list(passage=passage_data$passage), FUN=mean)$x
+    vYp = aggregate(passage_data$Y, by=list(passage=passage_data$passage), FUN=var)$x
+    cov = passage_data %>% group_by(passage) %>% summarise(sig=cov(X,Y))
+    cXYp = cov$sig
+    Emp.Mom = c(mXp, vXp, mYp, vYp, cXYp)
     # Emp.Mom = c(mean(X),var(X),mean(Y),var(Y),cov(X,Y))
     #Emp.Mom = c(mean(X),var(X),mean(Y),cov(X,Y))
   }
