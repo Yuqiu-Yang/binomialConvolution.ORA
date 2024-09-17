@@ -27,8 +27,7 @@ generate_counts_par <- function(n_students,
   return(par_list)
 }
 
-#'
-#'
+
 #'
 #' @param positive_prob The probability of correct prounciation
 #' @param true_positive_prob
@@ -83,6 +82,21 @@ generate_counts <- function(positive_prob,
 
   return(result)
 }
+
+
+simulate_passages <- function(positive_prob,
+                              true_positive_prob,
+                              true_negative_prob,
+                              positive_overdispersion=0,
+                              true_positive_overdispersion=0,
+                              true_negative_overdispersion=0,
+                              passage_name="1",
+                              n_students=40,
+                              n_words=50)
+{
+
+}
+
 
 
 
