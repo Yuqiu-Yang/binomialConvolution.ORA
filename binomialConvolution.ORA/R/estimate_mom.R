@@ -7,7 +7,6 @@ estimate_mom <- function(passage_data)
   X = passage_data$X
   P = length(unique(passage_data$passage))
 
-  passage_data$passage = factor(passage_data$passage)
 
   # For each passage we compute the passage length and sample size
   Np = aggregate(passage_data$N, by=list(passage=passage_data$passage), FUN=function(x)x[1])$x

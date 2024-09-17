@@ -90,11 +90,29 @@ simulate_passages <- function(positive_prob,
                               positive_overdispersion=0,
                               true_positive_overdispersion=0,
                               true_negative_overdispersion=0,
-                              passage_name="1",
-                              n_students=40,
-                              n_words=50)
+                              passage_name=as.character(1:2),
+                              n_students=rep(40,2),
+                              n_words=rep(50,2))
 {
+  P = length(passage_name)
+  passage_data = c()
+  for(p in 1 : P)
+  {
+    result = generate_counts(positive_prob=positive_prob,
+                             true_positive_prob=true_positive_prob,
+                             true_negative_prob=true_negative_prob,
+                             positive_overdispersion=positive_overdispersion,
+                             true_positive_overdispersion=true_positive_overdispersion,
+                             true_negative_overdispersion=true_negative_overdispersion,
+                             passage_name=passage_name[p],
+                             n_students=n_students[p],
+                             n_words=n_words[p])
+    passage_data = rbind(passage_data, result)
+  }
+  passage_data$passage = factor(passage_data$passage,
+                                levels=passage_name)
 
+  return(passage_data)
 }
 
 
