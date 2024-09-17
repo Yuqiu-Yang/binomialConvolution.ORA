@@ -1,3 +1,4 @@
+library(dplyr)
 library(extraDistr)
 
 #'
@@ -17,7 +18,8 @@ generate_counts_par <- function(n_students,
   if(overdispersion > 0)
   {
     par_list$fun_name = "rbbinom"
-    par_alpha = prob * (1-overdispersion) / overdispersion
+    icc = overdispersion/(size-1)
+    par_alpha = prob * (1-icc) / icc
     par_list$fun_args$alpha = par_alpha
     par_list$fun_args$beta = par_alpha * (1/prob - 1)
   }else{
@@ -209,6 +211,49 @@ bootstrap_passages <- function(passage_data,
   }
   return(result_list)
 }
+
+
+
+get_passage_moments <- function(passage_data)
+{
+  # For each passage we compute the passage length and sample size
+  Np = aggregate(passage_data$N, by=list(passage=passage_data$passage), FUN=function(x)x[1])$x
+  np = aggregate(passage_data$passage, by=list(passag=passage_data$passage), FUN=function(x)length(x))$x
+  # based on this we can compute the weights
+  wp = Np*np/(sum(Np*np))
+
+  # Then we compute for each passage the sample mean variance covariance
+  mXp = aggregate(passage_data$X, by=list(passage=passage_data$passage), FUN=mean)$x
+  vXp = aggregate(passage_data$X, by=list(passage=passage_data$passage), FUN=var)$x
+  mYp = aggregate(passage_data$Y, by=list(passage=passage_data$passage), FUN=mean)$x
+  vYp = aggregate(passage_data$Y, by=list(passage=passage_data$passage), FUN=var)$x
+  covp = passage_data %>% group_by(passage) %>% summarise(sig=cov(X,Y))
+  cXYp = covp$sig
+
+  mX = sum(mXp * wp)
+  vX = sum(vXp * wp)
+  cXY = sum(cXYp * wp)
+  N = sum(Np * wp)
+  mY = sum(mYp * wp)
+  vY = sum(vYp * wp)
+
+  return(list("Np"=Np,
+              "np"=np,
+              "wp"=wp,
+              "mXp"=mXp,
+              "vXp"=vXp,
+              "mYp"=mYp,
+              "vYp"=vYp,
+              "cXYp"=cXYp,
+              "mX"=mX,
+              "vX"=vX,
+              "cXY"=cXY,
+              "N"=N,
+              "mY"=mY,
+              "vY"=vY))
+}
+
+
 
 
 

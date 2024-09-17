@@ -1,6 +1,7 @@
 
 
-estimate_linear_regression <- function(passage_data)
+estimate_linear_regression <- function(passage_data,
+                                       significance_level=0.05)
 {
   Y = passage_data$Y
   X1 = passage_data$n_positive
@@ -15,9 +16,15 @@ estimate_linear_regression <- function(passage_data)
   true_positive_prob = pmin(prob_est[1],1)
   true_negative_prob = pmin(prob_est[2],1)
   alpha.hat = matrix(c(true_positive_prob*(1-true_positive_prob),true_negative_prob*(1-true_negative_prob)),nrow=2)
-  prob_est_se = sqrt(diag(solve(t(Z)%*%Z) %*% t(Z) %*% diag(as.numeric(Z %*% alpha.hat)) %*% Z %*% solve(t(Z)%*%Z)))
+  SE = sqrt(diag(solve(t(Z)%*%Z) %*% t(Z) %*% diag(as.numeric(Z %*% alpha.hat)) %*% Z %*% solve(t(Z)%*%Z)))
 
-  result = c(true_positive_prob, true_negative_prob, prob_est_se)
-  return(result)
+  prob_est = c(true_positive_prob, true_negative_prob)
+  ul = prob_est + qnorm(1-significance_level/2)*SE
+  ll = prob_est - qnorm(1-significance_level/2)*SE
+  ul = pmax(pmin(ul, 1),0)
+  ll = pmax(pmin(ll, 1),0)
+  return(list("pi.hat"=prob_est,
+              "pi.hat.ul"=ul,
+              "pi.hat.ll"=ll))
 }
 
