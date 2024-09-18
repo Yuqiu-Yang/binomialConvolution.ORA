@@ -23,8 +23,8 @@ estimate_linear_regression <- function(passage_data,
   ll = prob_est - qnorm(1-significance_level/2)*SE
   ul = pmax(pmin(ul, 1),0)
   ll = pmax(pmin(ll, 1),0)
-  return(list("pi.hat"=prob_est,
-              "pi.hat.ul"=ul,
-              "pi.hat.ll"=ll))
+  return(list("pi.hat"=unname(prob_est),
+              "pi.hat.ul"=unname(ul),
+              "pi.hat.ll"=unname(ll)))
 }
 

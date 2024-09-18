@@ -19,6 +19,7 @@ estimate_mom <- function(passage_data,
   true_negative_prob = (1-mY/N) + cXY/vX*mX/N
 
   prob_est = c(true_positive_prob, true_negative_prob)
+  prob_est = pmax(pmin(prob_est, 1),0)
 
   Omega = matrix(0, nrow=4, ncol=4)
   counter = 1
@@ -99,7 +100,7 @@ estimate_gmm_helper <- function(par,
     }
     # data.omega = cbind(X,(X-mX)^2,Y,(Y-mY)^2,(X-mX)*(Y-mY))
     # Omega = cov(data.omega)
-    invOmega = solve(Omega)
+    invOmega = pinv(Omega)
   }
 
   Th.Mom = c(sum(mu.X*wp), sum(var.X*wp),

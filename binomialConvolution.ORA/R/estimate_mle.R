@@ -1,8 +1,8 @@
 library(binomialConvolution)
 
 
-same_prob_likelihood <- function(par,
-                                 passage_data)
+passage_likelihood <- function(par,
+                               passage_data)
 {
   probs = 1/(1+exp(-par))
   sum_log = 0
@@ -32,10 +32,10 @@ same_prob_likelihood <- function(par,
 }
 
 
-same_prob_profile_likelihood <- function(par,
-                                         passage_data,
-                                         fixed_success_probs,
-                                         fixed_success_probs_index)
+passage_profile_likelihood <- function(par,
+                                       passage_data,
+                                       fixed_success_probs,
+                                       fixed_success_probs_index)
 {
   sum_log = 0
   for(r in 1 : nrow(passage_data))
@@ -50,7 +50,7 @@ same_prob_profile_likelihood <- function(par,
     if(length(keep) > 1)
     {
       lg = log_likelihood_equality_constraint(par,
-                                              samples = as.numeric(passage_data[r, "sample"]),
+                                              samples = as.numeric(passage_data[r, "Y"]),
                                               n_trials = n_trials[keep],
                                               fixed_success_probs = fixed_success_probs,
                                               fixed_success_probs_index = fixed_success_probs_index)
@@ -64,12 +64,29 @@ same_prob_profile_likelihood <- function(par,
       # if keep the first one but the second is fixed
       lg = dbinom(x=as.numeric(passage_data[r, "Y"]),
                   size=n_trials[keep],
-                  prob=par_to_probs(par),
+                  prob=1/(1+exp(-par)),
                   log=TRUE)
     }
     sum_log = sum_log + lg
   }
   return(sum_log)
+}
+
+
+profile_likelihood_ci <- function(fixed_success_probs,
+                                  passage_data,
+                                  fixed_success_probs_index,
+                                  mle_llh,
+                                  significance_level=0.05)
+{
+  test_llh = optimize(f=passage_profile_likelihood,
+                     interval=c(-10,10),
+                     passage_data=passage_data,
+                     fixed_success_probs=fixed_success_probs,
+                     fixed_success_probs_index=fixed_success_probs_index,
+                     maximum=T)$objective
+  lrt = -2 * (test_llh - mle_llh)
+  return(lrt - qchisq(1-significance_level, 1))
 }
 
 
@@ -81,40 +98,50 @@ estimate_mle <- function(passage_data,
   mom.est = estimate_mom(passage_data=passage_data,
                          passage_moments=passage_moments,
                          significance_level=significance_level)
-  probs=mom.est$pi.hat
-  same_prob_est = optim(par=log(probs/(1-probs)),
-                        fn=same_prob_likelihood,
+  probs=pmax(pmin(mom.est$pi.hat,0.99),0.001)
+  prob_est_optim = optim(par=log(probs/(1-probs)),
+                        fn=passage_likelihood,
                         passage_data=passage_data,
                         control=list(fnscale=-1),
                         method = "BFGS")
-  prob_est = 1/(1+exp(-same_prob_est$par))
+  prob_est = 1/(1+exp(-prob_est_optim$par))
+  llh = prob_est_optim$value
   # Profile confidence intervals based on the identical prob assumption
-  p_p1_grid = seq(0.9, 0.99999, length.out = 100)
-  p_p1_nllh = numeric(100)
-  for(k in 1 : 100)
-  {
-    p_p1_nllh[k] = -optimize(f=same_prob_profile_likelihood,
-                             interval=c(-10,10),
-                             passage_data=passage_data,
-                             fixed_success_probs=p_p1_grid[k],
-                             fixed_success_probs_index=1,
-                             maximum=T)$objective
-  }
-  p_p2_grid = seq(0.1, 0.5, length.out = 100)
-  p_p2_nllh = numeric(100)
-  for(k in 1 : 100)
-  {
-    p_p2_nllh[k] = -optimize(f=same_prob_profile_likelihood,
-                             interval=c(-10,10),
-                             passage_data=passage_data,
-                             fixed_success_probs=p_p2_grid[k],
-                             fixed_success_probs_index=2,
-                             maximum=T)$objective
-  }
+  p1_ul = tryCatch(
+    expr = {
+      uniroot(f=profile_likelihood_ci,
+              lower=prob_est[1], upper=0.999999999,
+              passage_data=passage_data,
+              fixed_success_probs_index=1,
+              mle_llh=llh,
+              significance_level=significance_level)$root
+    },
+    error = function(e){
+      return(1)
+    }
+  )
+  p1_ll = uniroot(f=profile_likelihood_ci,
+                  lower=mom.est$pi.hat.ll[1] *0.95, upper=prob_est[1],
+                  passage_data=passage_data,
+                  fixed_success_probs_index=1,
+                  mle_llh=llh,
+                  significance_level=significance_level)$root
+  p2_ll = 1-uniroot(f=profile_likelihood_ci,
+                    lower=prob_est[2], upper=0.99,
+                    passage_data=passage_data,
+                    fixed_success_probs_index=2,
+                    mle_llh=llh,
+                    significance_level=significance_level)$root
+  p2_ul = 1-uniroot(f=profile_likelihood_ci,
+                    lower=0.00001, upper=prob_est[2],
+                    passage_data=passage_data,
+                    fixed_success_probs_index=2,
+                    mle_llh=llh,
+                    significance_level=significance_level)$root
 
-  2*(final_est$Y.Human$p_p1.nllh - min(final_est$Y.Human$p_p1.nllh))
-
-
+  return(list("pi.hat"=c(prob_est[1], 1-prob_est[2]),
+              "pi.hat.ul"=c(p1_ul, p2_ul),
+              "pi.hat.ll"=c(p1_ll, p2_ll)))
 }
 
 
