@@ -99,6 +99,7 @@ estimate_mle <- function(passage_data,
                          passage_moments=passage_moments,
                          significance_level=significance_level)
   probs=pmax(pmin(mom.est$pi.hat,0.99),0.001)
+  probs[2]=1-probs[2]
   prob_est_optim = optim(par=log(probs/(1-probs)),
                         fn=passage_likelihood,
                         passage_data=passage_data,
@@ -110,7 +111,7 @@ estimate_mle <- function(passage_data,
   p1_ul = tryCatch(
     expr = {
       uniroot(f=profile_likelihood_ci,
-              lower=prob_est[1], upper=0.999999999,
+              lower=prob_est[1], upper=0.9999999,
               passage_data=passage_data,
               fixed_success_probs_index=1,
               mle_llh=llh,
@@ -120,24 +121,49 @@ estimate_mle <- function(passage_data,
       return(1)
     }
   )
-  p1_ll = uniroot(f=profile_likelihood_ci,
-                  lower=mom.est$pi.hat.ll[1] *0.95, upper=prob_est[1],
-                  passage_data=passage_data,
-                  fixed_success_probs_index=1,
-                  mle_llh=llh,
-                  significance_level=significance_level)$root
-  p2_ll = 1-uniroot(f=profile_likelihood_ci,
-                    lower=prob_est[2], upper=0.99,
-                    passage_data=passage_data,
-                    fixed_success_probs_index=2,
-                    mle_llh=llh,
-                    significance_level=significance_level)$root
-  p2_ul = 1-uniroot(f=profile_likelihood_ci,
-                    lower=0.00001, upper=prob_est[2],
-                    passage_data=passage_data,
-                    fixed_success_probs_index=2,
-                    mle_llh=llh,
-                    significance_level=significance_level)$root
+  p1_ll = tryCatch(
+    expr = {
+      uniroot(f=profile_likelihood_ci,
+              lower=0.0000001, upper=prob_est[1],
+              passage_data=passage_data,
+              fixed_success_probs_index=1,
+              mle_llh=llh,
+              significance_level=significance_level)$root
+    },
+    error = function(e){
+      return(0)
+    }
+  )
+
+  p2_ll = tryCatch(
+    expr = {
+      1-uniroot(f=profile_likelihood_ci,
+                lower=prob_est[2], upper=0.9999999,
+                passage_data=passage_data,
+                fixed_success_probs_index=2,
+                mle_llh=llh,
+                significance_level=significance_level)$root
+    },
+    error = function(e){
+      return(0)
+    }
+  )
+
+
+  p2_ul = tryCatch(
+    expr = {
+      1-uniroot(f=profile_likelihood_ci,
+                lower=0.0000001, upper=prob_est[2],
+                passage_data=passage_data,
+                fixed_success_probs_index=2,
+                mle_llh=llh,
+                significance_level=significance_level)$root
+    },
+    error = function(e){
+      return(1)
+    }
+  )
+
 
   return(list("pi.hat"=c(prob_est[1], 1-prob_est[2]),
               "pi.hat.ul"=c(p1_ul, p2_ul),

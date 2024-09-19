@@ -61,7 +61,7 @@ for(i_setting in 1 : nrow(simulation_setting))
 # Then we generate estimates
 ###########################################
 significance_level = 0.05
-for(i_setting in 1 : nrow(simulation_setting))
+for(i_setting in 3 : nrow(simulation_setting))
 {
   setting_folder = paste0("./setting_", i_setting)
   for(i_simulation in 1 : n_simulation)
