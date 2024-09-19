@@ -93,11 +93,13 @@ profile_likelihood_ci <- function(fixed_success_probs,
 
 estimate_mle <- function(passage_data,
                          passage_moments,
-                         significance_level=0.05)
+                         significance_level=0.05,
+                         return_ci=TRUE)
 {
   mom.est = estimate_mom(passage_data=passage_data,
                          passage_moments=passage_moments,
-                         significance_level=significance_level)
+                         significance_level=significance_level,
+                         return_ci=FALSE)
   probs=pmax(pmin(mom.est$pi.hat,0.99),0.001)
   probs[2]=1-probs[2]
   prob_est_optim = optim(par=log(probs/(1-probs)),
@@ -106,68 +108,73 @@ estimate_mle <- function(passage_data,
                         control=list(fnscale=-1),
                         method = "BFGS")
   prob_est = 1/(1+exp(-prob_est_optim$par))
-  llh = prob_est_optim$value
-  # Profile confidence intervals based on the identical prob assumption
-  p1_ul = tryCatch(
-    expr = {
-      uniroot(f=profile_likelihood_ci,
-              lower=prob_est[1], upper=0.9999999,
-              passage_data=passage_data,
-              fixed_success_probs_index=1,
-              mle_llh=llh,
-              significance_level=significance_level)$root
-    },
-    error = function(e){
-      return(1)
-    }
-  )
-  p1_ll = tryCatch(
-    expr = {
-      uniroot(f=profile_likelihood_ci,
-              lower=0.0000001, upper=prob_est[1],
-              passage_data=passage_data,
-              fixed_success_probs_index=1,
-              mle_llh=llh,
-              significance_level=significance_level)$root
-    },
-    error = function(e){
-      return(0)
-    }
-  )
-
-  p2_ll = tryCatch(
-    expr = {
-      1-uniroot(f=profile_likelihood_ci,
-                lower=prob_est[2], upper=0.9999999,
+  ul = ll = NA
+  if(return_ci)
+  {
+    llh = prob_est_optim$value
+    # Profile confidence intervals based on the identical prob assumption
+    p1_ul = tryCatch(
+      expr = {
+        uniroot(f=profile_likelihood_ci,
+                lower=prob_est[1], upper=0.9999999,
                 passage_data=passage_data,
-                fixed_success_probs_index=2,
+                fixed_success_probs_index=1,
                 mle_llh=llh,
                 significance_level=significance_level)$root
-    },
-    error = function(e){
-      return(0)
-    }
-  )
-
-
-  p2_ul = tryCatch(
-    expr = {
-      1-uniroot(f=profile_likelihood_ci,
-                lower=0.0000001, upper=prob_est[2],
+      },
+      error = function(e){
+        return(1)
+      }
+    )
+    p1_ll = tryCatch(
+      expr = {
+        uniroot(f=profile_likelihood_ci,
+                lower=0.0000001, upper=prob_est[1],
                 passage_data=passage_data,
-                fixed_success_probs_index=2,
+                fixed_success_probs_index=1,
                 mle_llh=llh,
                 significance_level=significance_level)$root
-    },
-    error = function(e){
-      return(1)
-    }
-  )
+      },
+      error = function(e){
+        return(0)
+      }
+    )
 
+    p2_ll = tryCatch(
+      expr = {
+        1-uniroot(f=profile_likelihood_ci,
+                  lower=prob_est[2], upper=0.9999999,
+                  passage_data=passage_data,
+                  fixed_success_probs_index=2,
+                  mle_llh=llh,
+                  significance_level=significance_level)$root
+      },
+      error = function(e){
+        return(0)
+      }
+    )
+
+
+    p2_ul = tryCatch(
+      expr = {
+        1-uniroot(f=profile_likelihood_ci,
+                  lower=0.0000001, upper=prob_est[2],
+                  passage_data=passage_data,
+                  fixed_success_probs_index=2,
+                  mle_llh=llh,
+                  significance_level=significance_level)$root
+      },
+      error = function(e){
+        return(1)
+      }
+    )
+    ul = c(p1_ul, p2_ul)
+    ll = c(p1_ll, p2_ll)
+  }
 
   return(list("pi.hat"=c(prob_est[1], 1-prob_est[2]),
-              "pi.hat.ul"=c(p1_ul, p2_ul),
-              "pi.hat.ll"=c(p1_ll, p2_ll)))
+              "pi.hat.ul"=ul,
+              "pi.hat.ll"=ll))
 }
 
 

@@ -3,7 +3,8 @@ library(pracma)
 
 estimate_mom <- function(passage_data,
                          passage_moments,
-                         significance_level=0.05)
+                         significance_level=0.05,
+                         return_ci=TRUE)
 {
   Y = passage_data$Y
   X = passage_data$X
@@ -20,31 +21,34 @@ estimate_mom <- function(passage_data,
 
   prob_est = c(true_positive_prob, true_negative_prob)
   prob_est = pmax(pmin(prob_est, 1),0)
-
-  Omega = matrix(0, nrow=4, ncol=4)
-  counter = 1
-  for(p in levels(passage_data$passage))
+  ul = ll = NA
+  if(return_ci)
   {
-    ind = which(passage_data$passage == p)
-    data_omega = cbind(X[ind], Y[ind],
-                       (X[ind] - passage_moments$mXp[counter])^2,
-                       (X[ind]-passage_moments$mXp[counter])*(Y[ind]-passage_moments$mYp[counter]))
-    Omega = Omega + cov(data_omega)/(passage_moments$np[counter]) * (passage_moments$wp[counter]^2)
-    counter = counter + 1
+    Omega = matrix(0, nrow=4, ncol=4)
+    counter = 1
+    for(p in levels(passage_data$passage))
+    {
+      ind = which(passage_data$passage == p)
+      data_omega = cbind(X[ind], Y[ind],
+                         (X[ind] - passage_moments$mXp[counter])^2,
+                         (X[ind]-passage_moments$mXp[counter])*(Y[ind]-passage_moments$mYp[counter]))
+      Omega = Omega + cov(data_omega)/(passage_moments$np[counter]) * (passage_moments$wp[counter]^2)
+      counter = counter + 1
+    }
+
+    A = rbind(
+      c(-1/N*cXY/vX, 1/N, -cXY/vX^2*(1-mX/N),1/vX*(1-mX/N)),
+      c(1/N*cXY/vX, -1/N, -cXY/vX^2*mX/N,1/vX*mX/N)
+    )
+
+    CV = A %*% Omega %*% t(A)
+    SE = sqrt(diag(CV))
+
+    ul = prob_est + qnorm(1-significance_level/2)*SE
+    ll = prob_est - qnorm(1-significance_level/2)*SE
+    ul = pmax(pmin(ul, 1),0)
+    ll = pmax(pmin(ll, 1),0)
   }
-
-  A = rbind(
-    c(-1/N*cXY/vX, 1/N, -cXY/vX^2*(1-mX/N),1/vX*(1-mX/N)),
-    c(1/N*cXY/vX, -1/N, -cXY/vX^2*mX/N,1/vX*mX/N)
-  )
-
-  CV = A %*% Omega %*% t(A)
-  SE = sqrt(diag(CV))
-
-  ul = prob_est + qnorm(1-significance_level/2)*SE
-  ll = prob_est - qnorm(1-significance_level/2)*SE
-  ul = pmax(pmin(ul, 1),0)
-  ll = pmax(pmin(ll, 1),0)
   return(list("pi.hat"=prob_est,
               "pi.hat.ul"=ul,
               "pi.hat.ll"=ll))
@@ -116,11 +120,13 @@ estimate_gmm_helper <- function(par,
 
 estimate_gmm <- function(passage_data,
                          passage_moments,
-                         significance_level=0.05)
+                         significance_level=0.05,
+                         return_ci=TRUE)
 {
   mom.est = estimate_mom(passage_data=passage_data,
                          passage_moments=passage_moments,
-                         significance_level=significance_level)
+                         significance_level=significance_level,
+                         return_ci=FALSE)
   P = length(unique(passage_data$passage))
 
   gmm_est = optim(c(passage_moments$mXp,
@@ -136,12 +142,17 @@ estimate_gmm <- function(passage_data,
                     hessian = TRUE)
 
   prob_est = gmm_est$par[c(2*P+1,2*P+2)]
-  SE = sqrt(diag(pinv(gmm_est$hessian)))[c(2*P+1,2*P+2)]
+  prob_est = pmax(pmin(prob_est, 1),0)
+  ul = ll = NA
+  if(return_ci)
+  {
+    SE = sqrt(diag(pinv(gmm_est$hessian)))[c(2*P+1,2*P+2)]
 
-  ul = prob_est + qnorm(1-significance_level/2)*SE
-  ll = prob_est - qnorm(1-significance_level/2)*SE
-  ul = pmax(pmin(ul, 1),0)
-  ll = pmax(pmin(ll, 1),0)
+    ul = prob_est + qnorm(1-significance_level/2)*SE
+    ll = prob_est - qnorm(1-significance_level/2)*SE
+    ul = pmax(pmin(ul, 1),0)
+    ll = pmax(pmin(ll, 1),0)
+  }
   return(list("pi.hat"=prob_est,
               "pi.hat.ul"=ul,
               "pi.hat.ll"=ll))

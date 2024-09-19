@@ -38,8 +38,8 @@ simulation_setting = read.csv("./simulation_setting.csv")
 n_simulation = 1000
 for(i_setting in 1 : nrow(simulation_setting))
 {
-  setting_folder = paste0("./setting_", i_setting)
-  dir.create(setting_folder)
+  setting_folder = paste0("./setting_", i_setting,"/passage_data")
+  dir.create(setting_folder, recursive = T)
   for(i_simulation in 1 : n_simulation)
   {
     file_name = paste0(setting_folder, "/passage_", i_simulation)
@@ -60,36 +60,16 @@ for(i_setting in 1 : nrow(simulation_setting))
 ###########################################
 # Then we generate estimates
 ###########################################
-significance_level = 0.05
-for(i_setting in 3 : nrow(simulation_setting))
+
+for(i_setting in 1 : nrow(simulation_setting))
 {
-  setting_folder = paste0("./setting_", i_setting)
-  for(i_simulation in 1 : n_simulation)
-  {
-    file_name = paste0(setting_folder, "/passage_", i_simulation)
-    passage_data = readRDS(paste0(file_name, ".rds"))
-
-    passage_moments = get_passage_moments(passage_data=passage_data)
-
-    mom_est = estimate_mom(passage_data=passage_data,
-                           passage_moments=passage_moments,
-                           significance_level=significance_level)
-    gmm_est = estimate_gmm(passage_data=passage_data,
-                           passage_moments=passage_moments,
-                           significance_level=significance_level)
-    reg_est = estimate_linear_regression(passage_data=passage_data,
-                                         significance_level=significance_level)
-    mle_est = estimate_mle(passage_data=passage_data,
-                           passage_moments=passage_moments,
-                           significance_level=significance_level)
-    result = list("passage_moments"=passage_moments,
-                  "mom_est"=mom_est,
-                  "gmm_est"=gmm_est,
-                  "reg_est"=reg_est,
-                  "mle_est"=mle_est)
-    saveRDS(result, file=paste0(file_name, "_result.rds"))
-  }
+  setting_folder = paste0("./setting_", i_setting,"/passage_est")
+  dir.create(setting_folder, recursive = T)
 }
+
+
+
+
 
 
 

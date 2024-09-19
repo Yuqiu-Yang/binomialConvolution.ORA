@@ -133,7 +133,7 @@ resample_passage <- function(passage_data,
   if(is.na(true_positive_prob) | is.na(true_negative_prob))
   {
     method = "m-out-of-n"
-    m=floor(n_students * sample_prob)
+    m=ceiling(n_students * sample_prob)
   }else{
     method = "semi-parametric"
     m=n_students
@@ -179,9 +179,8 @@ resample_passages <- function(passage_data,
                                true_negative_prob=NA,
                                sample_prob=NA)
 {
-  passage_name = unique(passage_data$passage)
   result = c()
-  for(p_name in passage_name)
+  for(p_name in levels(passage_data$passage))
   {
     p_data = resample_passage(passage_data=passage_data,
                                true_positive_prob=true_positive_prob,
