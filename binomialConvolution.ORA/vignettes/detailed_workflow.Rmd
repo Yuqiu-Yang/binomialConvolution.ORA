@@ -1,0 +1,531 @@
+---
+title: "Detailed workflow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{detailed_workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, warning=FALSE, message=FALSE, echo=FALSE}
+library(dplyr)
+library(extraDistr)
+```
+
+In this document, we will go through the essential steps of our simulation study.
+
+## Utility.R
+Since we will be simulating counts from either a Binomial distribution or a Beta-Binomial distribution, we start off by defining a function that can create input parameters for both classes of distributions under various conditions.
+
+To specify a Beta-Binomial distribution, we use the probability $p$ and the intra-class correlation $\rho$. Given a $\text{BetaBin}(n, \alpha, \beta)$, $p=\dfrac{\alpha}{\alpha+\beta}$ and $\rho=\dfrac{1}{\alpha+\beta+1}$. Therefore, $\alpha=p*(1-\rho)/\rho$ and $\beta=\alpha*(1/p-1)$
+
+```{r}
+generate_counts_par <- function(n_students,
+                                size,
+                                prob,
+                                icc=0)
+{
+  par_list = list("fun_name"=NA,
+                  "fun_args"=list("n"=n_students,
+                                  "size"=size))
+  if(icc > 0)
+  {
+    par_list$fun_name = "rbbinom"
+    par_alpha = prob * (1-icc) / icc
+    par_list$fun_args$alpha = par_alpha
+    par_list$fun_args$beta = par_alpha * (1/prob - 1)
+  }else{
+    par_list$fun_name = "rbinom"
+    par_list$fun_args$prob = prob
+  }
+  return(par_list)
+}
+```
+
+Before, we move on, let's quickly check if the function behaves as we expect
+```{r}
+# For binomial 
+generate_counts_par(n_students=50, size=44, prob=0.98, icc=0)
+```
+
+```{r}
+# For beta-binomial 
+generate_counts_par(n_students=50, size=c(44,10), prob=0.98, icc=0.06)
+```
+We also test if the function can vectorize. 
+```{r}
+par_list = generate_counts_par(n_students=10, size=rep(c(44, 5), 5), prob=0.98, icc=0.06)
+do.call(what=par_list$fun_name, args=par_list$fun_args)
+```
+
+Given the function generating input parameters, we now define a function that actually simulates counts. We first simulate the ground truth: the number of words a student actually prounced correctly. We will denote it by n\_positive. 
+
+The size parameter of true positive counts is then n\_positive, while the size parameter for false positive is n\_words-n\_positive. Note that n\_positive would be a vector and not just one single scalar.
+
+```{r}
+generate_counts <- function(positive_prob,
+                            true_positive_prob,
+                            true_negative_prob,
+                            positive_icc=0,
+                            true_positive_icc=0,
+                            true_negative_icc=0,
+                            passage_name="1",
+                            n_students=40,
+                            n_words=50)
+{
+  positive_par_list = generate_counts_par(n_students=n_students,
+                                          size=n_words,
+                                          prob=positive_prob,
+                                          icc=positive_icc)
+  n_positive = do.call(what=positive_par_list$fun_name,
+                       args=positive_par_list$fun_args)
+
+  true_positive_par_list = generate_counts_par(n_students=n_students,
+                                               size=n_positive,
+                                               prob=true_positive_prob,
+                                               icc=true_positive_icc)
+  n_true_positive = do.call(what=true_positive_par_list$fun_name,
+                            args=true_positive_par_list$fun_args)
+
+  false_positive_par_list = generate_counts_par(n_students=n_students,
+                                                size=n_words-n_positive,
+                                                prob=1-true_negative_prob,
+                                                icc=true_negative_icc)
+  n_false_positive = do.call(what=false_positive_par_list$fun_name,
+                             args=false_positive_par_list$fun_args)
+
+  observation = n_true_positive+n_false_positive
+
+  result = data.frame("passage"=passage_name,
+                      "X"=n_positive,
+                      "Y"=observation,
+                      "N"=n_words,
+                      "n_positive"=n_positive,
+                      "n_negative"=n_words-n_positive)
+
+  return(result)
+}
+```
+
+Finally, as we might be interested in simulating multiple passages, we will define a function that can loop through different passages 
+
+```{r}
+simulate_passages <- function(positive_prob,
+                              true_positive_prob,
+                              true_negative_prob,
+                              positive_icc=0,
+                              true_positive_icc=0,
+                              true_negative_icc=0,
+                              passage_name=as.character(1:2),
+                              n_students=rep(40,2),
+                              n_words=rep(50,2))
+{
+  P = length(passage_name)
+  passage_data = c()
+  for(p in 1 : P)
+  {
+    result = generate_counts(positive_prob=positive_prob,
+                             true_positive_prob=true_positive_prob,
+                             true_negative_prob=true_negative_prob,
+                             positive_icc=positive_icc,
+                             true_positive_icc=true_positive_icc,
+                             true_negative_icc=true_negative_icc,
+                             passage_name=passage_name[p],
+                             n_students=n_students[p],
+                             n_words=n_words[p])
+    passage_data = rbind(passage_data, result)
+  }
+  passage_data$passage = factor(passage_data$passage,
+                                levels=passage_name)
+
+  return(passage_data)
+}
+```
+
+Here is a quick example: 
+```{r}
+n_students = 50
+n_words = 44
+positive_prob = 0.98
+positive_icc = 0.06
+true_positive_prob = 0.98
+true_negative_prob = 0.75
+true_positive_icc = 0.01
+true_negative_icc = 0.01
+
+passage_data = simulate_passages(positive_prob=positive_prob,
+                                 true_positive_prob=true_positive_prob,
+                                 true_negative_prob=true_negative_prob,
+                                 positive_icc=positive_icc,
+                                 true_positive_icc=true_positive_icc,
+                                 true_negative_icc=true_negative_icc,
+                                 passage_name="1",
+                                 n_students=n_students,
+                                 n_words=n_words)
+head(passage_data)
+```
+
+Besides point estimates from the generated passages, we are also interested in quantifying the uncertainty of the estimates. Although we will implement the delta method in the regular estimation procedure, we can use bootstrap methods for the same purpose. In general, we will implement two types of bootstrap methods: semi-parameteric bootstrap and m-out-of-n bootstrap. 
+
+We start with one bootstrap on one passage 
+```{r}
+resample_passage <- function(passage_data,
+                              true_positive_prob=NA,
+                              true_negative_prob=NA,
+                              passage_name="1",
+                              sample_prob=NA)
+{
+  passage_data = passage_data[which(passage_data$passage == passage_name), ]
+  n_students = nrow(passage_data)
+  n_words = passage_data$N[1]
+
+  if(is.na(true_positive_prob) | is.na(true_negative_prob))
+  {
+    method = "m-out-of-n"
+    m=ceiling(n_students * sample_prob)
+  }else{
+    method = "semi-parametric"
+    m=n_students
+  }
+
+  ind=sample(n_students, size=m, replace=TRUE)
+
+  n_positive=passage_data$X[ind]
+  if(method=="semi-parametric")
+  {
+    true_positive_par_list = generate_counts_par(n_students=n_students,
+                                                 size=n_positive,
+                                                 prob=true_positive_prob,
+                                                 icc=0)
+    n_true_positive = do.call(what=true_positive_par_list$fun_name,
+                              args=true_positive_par_list$fun_args)
+
+    false_positive_par_list = generate_counts_par(n_students=n_students,
+                                                  size=n_words-n_positive,
+                                                  prob=1-true_negative_prob,
+                                                  icc=0)
+    n_false_positive = do.call(what=false_positive_par_list$fun_name,
+                               args=false_positive_par_list$fun_args)
+
+    observation = n_true_positive+n_false_positive
+  }else{
+    observation = passage_data$Y[ind]
+  }
+
+  result = data.frame("passage"=passage_name,
+                      "X"=n_positive,
+                      "Y"=observation,
+                      "N"=n_words,
+                      "n_positive"=n_positive,
+                      "n_negative"=n_words-n_positive)
+
+  return(result)
+}
+```
+
+Then one bootstrap for multiple passages 
+```{r}
+resample_passages <- function(passage_data,
+                               true_positive_prob=NA,
+                               true_negative_prob=NA,
+                               sample_prob=NA)
+{
+  result = c()
+  for(p_name in levels(passage_data$passage))
+  {
+    p_data = resample_passage(passage_data=passage_data,
+                               true_positive_prob=true_positive_prob,
+                               true_negative_prob=true_negative_prob,
+                               passage_name=p_name,
+                               sample_prob=sample_prob)
+    result = rbind(result, p_data)
+  }
+  return(result)
+}
+```
+
+Finally, multiple bootstraps for multiple passages 
+```{r}
+bootstrap_passages <- function(passage_data,
+                               true_positive_prob=NA,
+                               true_negative_prob=NA,
+                               n_bootstrap=50,
+                               sample_prob=NA)
+{
+  result_list = list()
+  if(n_bootstrap >= 1)
+  {
+    for(b in 1 : n_bootstrap)
+    {
+      result_list[[b]] = resample_passages(passage_data=passage_data,
+                                           true_positive_prob=true_positive_prob,
+                                           true_negative_prob=true_negative_prob,
+                                           sample_prob=sample_prob)
+    }
+  }
+  return(result_list)
+}
+```
+
+We can quickly test out the code and see if it works
+```{r}
+boot = bootstrap_passages(passage_data=passage_data,
+                           true_positive_prob=0.8,
+                           true_negative_prob=0.7,
+                           n_bootstrap=2,
+                           sample_prob=NA)
+lapply(boot, FUN=head)
+```
+```{r}
+boot = bootstrap_passages(passage_data=passage_data,
+                           true_positive_prob=NA,
+                           true_negative_prob=NA,
+                           n_bootstrap=2,
+                           sample_prob=1)
+lapply(boot, FUN=head)
+```
+
+Before, we move on to actual simualtion, we define one more auxiliary function that returns sample moments for each passage. 
+
+```{r}
+get_passage_moments <- function(passage_data)
+{
+  # For each passage we compute the passage length and sample size
+  Np = aggregate(passage_data$N, by=list(passage=passage_data$passage), FUN=function(x)x[1])$x
+  np = aggregate(passage_data$passage, by=list(passag=passage_data$passage), FUN=function(x)length(x))$x
+  # based on this we can compute the weights
+  wp = Np*np/(sum(Np*np))
+
+  # Then we compute for each passage the sample mean variance covariance
+  mXp = aggregate(passage_data$X, by=list(passage=passage_data$passage), FUN=mean)$x
+  vXp = aggregate(passage_data$X, by=list(passage=passage_data$passage), FUN=var)$x
+  mYp = aggregate(passage_data$Y, by=list(passage=passage_data$passage), FUN=mean)$x
+  vYp = aggregate(passage_data$Y, by=list(passage=passage_data$passage), FUN=var)$x
+  covp = passage_data %>% group_by(passage) %>% summarise(sig=cov(X,Y))
+  cXYp = covp$sig
+
+  mX = sum(mXp * wp)
+  vX = sum(vXp * wp)
+  cXY = sum(cXYp * wp)
+  N = sum(Np * wp)
+  mY = sum(mYp * wp)
+  vY = sum(vYp * wp)
+
+  return(list("Np"=Np,
+              "np"=np,
+              "wp"=wp,
+              "mXp"=mXp,
+              "vXp"=vXp,
+              "mYp"=mYp,
+              "vYp"=vYp,
+              "cXYp"=cXYp,
+              "mX"=mX,
+              "vX"=vX,
+              "cXY"=cXY,
+              "N"=N,
+              "mY"=mY,
+              "vY"=vY))
+}
+
+```
+
+`Note`: These functions are all defined in the utility.R file.
+
+## estimate\_mom.R
+Now, we define the MOM estimator
+```{r}
+estimate_mom <- function(passage_data,
+                         passage_moments,
+                         significance_level=0.05,
+                         return_ci=TRUE)
+{
+  Y = passage_data$Y
+  X = passage_data$X
+  P = length(unique(passage_data$passage))
+
+  mX = passage_moments$mX
+  vX = passage_moments$vX
+  cXY = passage_moments$cXY
+  N = passage_moments$N
+  mY = passage_moments$mY
+
+  true_positive_prob = mY/N + cXY/vX*(1-mX/N)
+  true_negative_prob = (1-mY/N) + cXY/vX*mX/N
+
+  prob_est = c(true_positive_prob, true_negative_prob)
+  prob_est = pmax(pmin(prob_est, 1),0)
+  ul = ll = NA
+  if(return_ci)
+  {
+    Omega = matrix(0, nrow=4, ncol=4)
+    counter = 1
+    for(p in levels(passage_data$passage))
+    {
+      ind = which(passage_data$passage == p)
+      data_omega = cbind(X[ind], Y[ind],
+                         (X[ind] - passage_moments$mXp[counter])^2,
+                         (X[ind]-passage_moments$mXp[counter])*(Y[ind]-passage_moments$mYp[counter]))
+      Omega = Omega + cov(data_omega)/(passage_moments$np[counter]) * (passage_moments$wp[counter]^2)
+      counter = counter + 1
+    }
+
+    A = rbind(
+      c(-1/N*cXY/vX, 1/N, -cXY/vX^2*(1-mX/N),1/vX*(1-mX/N)),
+      c(1/N*cXY/vX, -1/N, -cXY/vX^2*mX/N,1/vX*mX/N)
+    )
+
+    CV = A %*% Omega %*% t(A)
+    SE = sqrt(diag(CV))
+
+    ul = prob_est + qnorm(1-significance_level/2)*SE
+    ll = prob_est - qnorm(1-significance_level/2)*SE
+    ul = pmax(pmin(ul, 1),0)
+    ll = pmax(pmin(ll, 1),0)
+  }
+  return(list("pi.hat"=prob_est,
+              "pi.hat.ul"=ul,
+              "pi.hat.ll"=ll))
+}
+```
+
+## Simulation.R
+Now that we have ways to generate passages and perform MOM estimates, we will define the actual simulation setting. 
+
+```{r}
+n_students = 50
+n_words = c(44, 69)
+positive_prob = c(0.96, 0.98)
+positive_icc = c(0, 0.01, 0.06)
+true_positive_prob = c(0.98, 0.999)
+true_negative_prob = c(0.75, 0.85)
+true_positive_icc = c(0)
+true_negative_icc = c(0)
+
+simulation_setting = expand.grid(n_students,
+                                n_words,
+                                positive_prob,
+                                positive_icc,
+                                true_positive_prob,
+                                true_negative_prob,
+                                true_positive_icc,
+                                true_negative_icc)
+colnames(simulation_setting) = c("n_students",
+                                 "n_words",
+                                 "positive_prob",
+                                 "positive_icc",
+                                 "true_positive_prob",
+                                 "true_negative_prob",
+                                 "true_positive_icc",
+                                 "true_negative_icc")
+head(simulation_setting)
+```
+
+## simulation\_mom.R
+We will only demonstrate one iteration of the first simulation setting 
+
+```{r}
+# We first generate passage data 
+
+n_simulation = 1
+significance_level = 0.05
+n_bootstrap = 1
+
+i_setting = 1
+i_simulation = 1
+
+passage_data = simulate_passages(positive_prob=simulation_setting$positive_prob[i_setting],
+                                     true_positive_prob=simulation_setting$true_positive_prob[i_setting],
+                                     true_negative_prob=simulation_setting$true_negative_prob[i_setting],
+                                     positive_icc=simulation_setting$positive_icc[i_setting],
+                                     true_positive_icc=simulation_setting$true_positive_icc[i_setting],
+                                     true_negative_icc=simulation_setting$true_negative_icc[i_setting],
+                                     passage_name="1",
+                                     n_students=simulation_setting$n_students[i_setting],
+                                     n_words=simulation_setting$n_words[i_setting])
+```
+
+```{r}
+passage_moments = get_passage_moments(passage_data=passage_data)
+
+mom_est = estimate_mom(passage_data=passage_data,
+                       passage_moments=passage_moments,
+                       significance_level=significance_level,
+                       return_ci=TRUE)
+mom_est
+```
+
+
+
+```{r}
+# Bootstrap
+semi_par_boot = bootstrap_passages(passage_data=passage_data,
+                                   true_positive_prob=mom_est$pi.hat[1],
+                                   true_negative_prob=mom_est$pi.hat[2],
+                                   n_bootstrap=n_bootstrap,
+                                   sample_prob=NA)
+mn_boot_2sqrt = bootstrap_passages(passage_data=passage_data,
+                                   true_positive_prob=NA,
+                                   true_negative_prob=NA,
+                                   n_bootstrap=n_bootstrap,
+                                   sample_prob=2/sqrt(nrow(passage_data)))
+mn_boot_23 = bootstrap_passages(passage_data=passage_data,
+                                true_positive_prob=NA,
+                                true_negative_prob=NA,
+                                n_bootstrap=n_bootstrap,
+                                sample_prob=2/3)
+semi_par_est = mn_boot_2sqrt_est = mn_boot_23_est = matrix(0, nrow=n_bootstrap, ncol=2)
+if(n_bootstrap >= 1)
+{
+  for(n_boot in 1 : n_bootstrap)
+  {
+    passage_moments_boot = get_passage_moments(passage_data=semi_par_boot[[n_boot]])
+
+    mom_est_boot = estimate_mom(passage_data=semi_par_boot[[n_boot]],
+                                passage_moments=passage_moments_boot,
+                                significance_level=significance_level,
+                                return_ci=FALSE)
+    semi_par_est[n_boot, ] = mom_est_boot$pi.hat
+  }
+
+  for(n_boot in 1 : n_bootstrap)
+  {
+    passage_moments_boot = get_passage_moments(passage_data=mn_boot_2sqrt[[n_boot]])
+
+    mom_est_boot = estimate_mom(passage_data=mn_boot_2sqrt[[n_boot]],
+                                passage_moments=passage_moments_boot,
+                                significance_level=significance_level,
+                                return_ci=FALSE)
+    mn_boot_2sqrt_est[n_boot, ] = mom_est_boot$pi.hat
+  }
+
+  for(n_boot in 1 : n_bootstrap)
+  {
+    passage_moments_boot = get_passage_moments(passage_data=mn_boot_23[[n_boot]])
+
+    mom_est_boot = estimate_mom(passage_data=mn_boot_23[[n_boot]],
+                                passage_moments=passage_moments_boot,
+                                significance_level=significance_level,
+                                return_ci=FALSE)
+    mn_boot_23_est[n_boot, ] = mom_est_boot$pi.hat
+  }
+}
+
+result = list("mom_est"=mom_est,
+              "semi_par_est"=semi_par_est,
+              "mn_boot_2sqrt_est"=mn_boot_2sqrt_est,
+              "mn_boot_23_est"=mn_boot_23_est)
+result
+  
+```
+
+
+
+
+

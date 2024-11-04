@@ -5,28 +5,28 @@ source("../binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
 # n_students = 50
 # n_words = c(44, 69)
 # positive_prob = c(0.96, 0.98)
-# positive_overdispersion = c(0, 0.01, 0.06)[c(1,3)]
+# positive_icc = c(0, 0.01, 0.06)[c(1,3)]
 # true_positive_prob = c(0.98, 0.999)[1]
 # true_negative_prob = c(0.75, 0.85)[1]
-# true_positive_overdispersion = c(0, 0.01, 0.06)[c(2,3)]
-# true_negative_overdispersion = c(0, 0.01, 0.06)[c(2,3)]
+# true_positive_icc = c(0, 0.01, 0.06)[c(2,3)]
+# true_negative_icc = c(0, 0.01, 0.06)[c(2,3)]
 #
 # simulation_setting = expand.grid(n_students,
 #                                 n_words,
 #                                 positive_prob,
-#                                 positive_overdispersion,
+#                                 positive_icc,
 #                                 true_positive_prob,
 #                                 true_negative_prob,
-#                                 true_positive_overdispersion,
-#                                 true_negative_overdispersion)
+#                                 true_positive_icc,
+#                                 true_negative_icc)
 # colnames(simulation_setting) = c("n_students",
 #                                  "n_words",
 #                                  "positive_prob",
-#                                  "positive_overdispersion",
+#                                  "positive_icc",
 #                                  "true_positive_prob",
 #                                  "true_negative_prob",
-#                                  "true_positive_overdispersion",
-#                                  "true_negative_overdispersion")
+#                                  "true_positive_icc",
+#                                  "true_negative_icc")
 #
 # write.csv(simulation_setting,
 #           file="./simulation_setting.csv", row.names = FALSE)
@@ -47,9 +47,9 @@ for(i_setting in 1 : nrow(simulation_setting))
     passage_data = simulate_passages(positive_prob=simulation_setting$positive_prob[i_setting],
                                      true_positive_prob=simulation_setting$true_positive_prob[i_setting],
                                      true_negative_prob=simulation_setting$true_negative_prob[i_setting],
-                                     positive_overdispersion=simulation_setting$positive_overdispersion[i_setting],
-                                     true_positive_overdispersion=simulation_setting$true_positive_overdispersion[i_setting],
-                                     true_negative_overdispersion=simulation_setting$true_negative_overdispersion[i_setting],
+                                     positive_icc=simulation_setting$positive_icc[i_setting],
+                                     true_positive_icc=simulation_setting$true_positive_icc[i_setting],
+                                     true_negative_icc=simulation_setting$true_negative_icc[i_setting],
                                      passage_name="1",
                                      n_students=simulation_setting$n_students[i_setting],
                                      n_words=simulation_setting$n_words[i_setting])

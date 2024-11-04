@@ -1,30 +1,24 @@
 library(dplyr)
 library(extraDistr)
 
-#'
+#' Generate parameters for a binomial distribution or a beta-binomial distribution
 #' @param n_students Number of students. This is the number of observations you want to generate
-#' @param size
-#' @param prob
-#' @param overdispersion
-#' @return
+#' @param size Number of trials. This is the number of words in a passage
+#' @param prob Target probability
+#' @param icc Intra-class correlation.
+#' @returns A list of input parameter
 generate_counts_par <- function(n_students,
                                 size,
                                 prob,
-                                overdispersion=0)
+                                icc=0)
 {
   par_list = list("fun_name"=NA,
                   "fun_args"=list("n"=n_students,
                                   "size"=size))
-  if(overdispersion > 0)
+  if(icc > 0)
   {
     par_list$fun_name = "rbbinom"
-    icc = overdispersion/(size-1)
     par_alpha = prob * (1-icc) / icc
-    # When size is 0, we simply assign alpha=beta=0
-    par_alpha[which(size==0)] = 0
-    # When size is 1, this is just the bernoulli
-    # we assign a large number to alpha
-    par_alpha[which(size==1)] = 1e6
     par_list$fun_args$alpha = par_alpha
     par_list$fun_args$beta = par_alpha * (1/prob - 1)
   }else{
@@ -39,9 +33,9 @@ generate_counts_par <- function(n_students,
 #' @param positive_prob The probability of correct prounciation
 #' @param true_positive_prob
 #' @param true_negative_prob
-#' @param positive_overdispersion
-#' @param true_positive_overdispersion
-#' @param true_negative_overdispersion
+#' @param positive_icc
+#' @param true_positive_icc
+#' @param true_negative_icc
 #' @param passage_name
 #' @param n_students
 #' @param n_words
@@ -50,9 +44,9 @@ generate_counts_par <- function(n_students,
 generate_counts <- function(positive_prob,
                             true_positive_prob,
                             true_negative_prob,
-                            positive_overdispersion=0,
-                            true_positive_overdispersion=0,
-                            true_negative_overdispersion=0,
+                            positive_icc=0,
+                            true_positive_icc=0,
+                            true_negative_icc=0,
                             passage_name="1",
                             n_students=40,
                             n_words=50)
@@ -60,21 +54,21 @@ generate_counts <- function(positive_prob,
   positive_par_list = generate_counts_par(n_students=n_students,
                                           size=n_words,
                                           prob=positive_prob,
-                                          overdispersion=positive_overdispersion)
+                                          icc=positive_icc)
   n_positive = do.call(what=positive_par_list$fun_name,
                        args=positive_par_list$fun_args)
 
   true_positive_par_list = generate_counts_par(n_students=n_students,
                                                size=n_positive,
                                                prob=true_positive_prob,
-                                               overdispersion=true_positive_overdispersion)
+                                               icc=true_positive_icc)
   n_true_positive = do.call(what=true_positive_par_list$fun_name,
                             args=true_positive_par_list$fun_args)
 
   false_positive_par_list = generate_counts_par(n_students=n_students,
                                                 size=n_words-n_positive,
                                                 prob=1-true_negative_prob,
-                                                overdispersion=true_negative_overdispersion)
+                                                icc=true_negative_icc)
   n_false_positive = do.call(what=false_positive_par_list$fun_name,
                              args=false_positive_par_list$fun_args)
 
@@ -94,9 +88,9 @@ generate_counts <- function(positive_prob,
 simulate_passages <- function(positive_prob,
                               true_positive_prob,
                               true_negative_prob,
-                              positive_overdispersion=0,
-                              true_positive_overdispersion=0,
-                              true_negative_overdispersion=0,
+                              positive_icc=0,
+                              true_positive_icc=0,
+                              true_negative_icc=0,
                               passage_name=as.character(1:2),
                               n_students=rep(40,2),
                               n_words=rep(50,2))
@@ -108,9 +102,9 @@ simulate_passages <- function(positive_prob,
     result = generate_counts(positive_prob=positive_prob,
                              true_positive_prob=true_positive_prob,
                              true_negative_prob=true_negative_prob,
-                             positive_overdispersion=positive_overdispersion,
-                             true_positive_overdispersion=true_positive_overdispersion,
-                             true_negative_overdispersion=true_negative_overdispersion,
+                             positive_icc=positive_icc,
+                             true_positive_icc=true_positive_icc,
+                             true_negative_icc=true_negative_icc,
                              passage_name=passage_name[p],
                              n_students=n_students[p],
                              n_words=n_words[p])
@@ -152,14 +146,14 @@ resample_passage <- function(passage_data,
     true_positive_par_list = generate_counts_par(n_students=n_students,
                                                  size=n_positive,
                                                  prob=true_positive_prob,
-                                                 overdispersion=0)
+                                                 icc=0)
     n_true_positive = do.call(what=true_positive_par_list$fun_name,
                               args=true_positive_par_list$fun_args)
 
     false_positive_par_list = generate_counts_par(n_students=n_students,
                                                   size=n_words-n_positive,
                                                   prob=1-true_negative_prob,
-                                                  overdispersion=0)
+                                                  icc=0)
     n_false_positive = do.call(what=false_positive_par_list$fun_name,
                                args=false_positive_par_list$fun_args)
 
