@@ -3,13 +3,14 @@
 ###########################################
 rm(list=ls())
 set.seed(42)
-source("/Users/yuqiuianyang/Desktop/repos/binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
-source("/Users/yuqiuianyang/Desktop/repos/binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_regression.R")
-setwd("/Users/yuqiuianyang/Desktop/work/potgieter/binomialConvolution.ORA/data/simulation/")
+# setwd("/work/DPDS/s205711/ORA/simulation/")
+setwd("/work/DPDS/s205711/ORA/simulation_misspecification/")
+source("../binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
+source("../binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_regression.R")
 simulation_setting = read.csv("./simulation_setting.csv")
 n_simulation = 1000
 significance_level = 0.05
-n_bootstrap = 50
+n_bootstrap = 0
 for(i_setting in 1 : nrow(simulation_setting))
 {
   setting_folder = paste0("./setting_", i_setting)
@@ -39,28 +40,31 @@ for(i_setting in 1 : nrow(simulation_setting))
                                     sample_prob=2/3)
     semi_par_est = mn_boot_2sqrt_est = mn_boot_23_est = matrix(0, nrow=n_bootstrap, ncol=2)
 
-    for(n_boot in 1 : n_bootstrap)
+    if(n_bootstrap >= 1)
     {
-      reg_est_boot = estimate_linear_regression(passage_data=semi_par_boot[[n_boot]],
-                                                significance_level=significance_level,
-                                                return_ci=FALSE)
-      semi_par_est[n_boot, ] = reg_est_boot$pi.hat
-    }
+      for(n_boot in 1 : n_bootstrap)
+      {
+        reg_est_boot = estimate_linear_regression(passage_data=semi_par_boot[[n_boot]],
+                                                  significance_level=significance_level,
+                                                  return_ci=FALSE)
+        semi_par_est[n_boot, ] = reg_est_boot$pi.hat
+      }
 
-    for(n_boot in 1 : n_bootstrap)
-    {
-      reg_est_boot = estimate_linear_regression(passage_data=mn_boot_2sqrt[[n_boot]],
-                                                significance_level=significance_level,
-                                                return_ci=FALSE)
-      mn_boot_2sqrt_est[n_boot, ] = reg_est_boot$pi.hat
-    }
+      for(n_boot in 1 : n_bootstrap)
+      {
+        reg_est_boot = estimate_linear_regression(passage_data=mn_boot_2sqrt[[n_boot]],
+                                                  significance_level=significance_level,
+                                                  return_ci=FALSE)
+        mn_boot_2sqrt_est[n_boot, ] = reg_est_boot$pi.hat
+      }
 
-    for(n_boot in 1 : n_bootstrap)
-    {
-      reg_est_boot = estimate_linear_regression(passage_data=mn_boot_23[[n_boot]],
-                                                significance_level=significance_level,
-                                                return_ci=FALSE)
-      mn_boot_23_est[n_boot, ] = reg_est_boot$pi.hat
+      for(n_boot in 1 : n_bootstrap)
+      {
+        reg_est_boot = estimate_linear_regression(passage_data=mn_boot_23[[n_boot]],
+                                                  significance_level=significance_level,
+                                                  return_ci=FALSE)
+        mn_boot_23_est[n_boot, ] = reg_est_boot$pi.hat
+      }
     }
 
     result = list("reg_est"=reg_est,

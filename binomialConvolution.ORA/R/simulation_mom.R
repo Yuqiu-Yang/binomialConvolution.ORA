@@ -3,13 +3,14 @@
 ###########################################
 rm(list=ls())
 set.seed(42)
-source("/Users/yuqiuianyang/Desktop/repos/binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
-source("/Users/yuqiuianyang/Desktop/repos/binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_mom.R")
-setwd("/Users/yuqiuianyang/Desktop/work/potgieter/binomialConvolution.ORA/data/simulation/")
+# setwd("/work/DPDS/s205711/ORA/simulation/")
+setwd("/work/DPDS/s205711/ORA/simulation_misspecification/")
+source("../binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
+source("../binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_mom.R")
 simulation_setting = read.csv("./simulation_setting.csv")
 n_simulation = 1000
 significance_level = 0.05
-n_bootstrap = 50
+n_bootstrap = 0
 for(i_setting in 1 : nrow(simulation_setting))
 {
   setting_folder = paste0("./setting_", i_setting)
@@ -41,38 +42,40 @@ for(i_setting in 1 : nrow(simulation_setting))
                                     n_bootstrap=n_bootstrap,
                                     sample_prob=2/3)
     semi_par_est = mn_boot_2sqrt_est = mn_boot_23_est = matrix(0, nrow=n_bootstrap, ncol=2)
-
-    for(n_boot in 1 : n_bootstrap)
+    if(n_bootstrap >= 1)
     {
-      passage_moments_boot = get_passage_moments(passage_data=semi_par_boot[[n_boot]])
+      for(n_boot in 1 : n_bootstrap)
+      {
+        passage_moments_boot = get_passage_moments(passage_data=semi_par_boot[[n_boot]])
 
-      mom_est_boot = estimate_mom(passage_data=semi_par_boot[[n_boot]],
-                                  passage_moments=passage_moments_boot,
-                                  significance_level=significance_level,
-                                  return_ci=FALSE)
-      semi_par_est[n_boot, ] = mom_est_boot$pi.hat
-    }
+        mom_est_boot = estimate_mom(passage_data=semi_par_boot[[n_boot]],
+                                    passage_moments=passage_moments_boot,
+                                    significance_level=significance_level,
+                                    return_ci=FALSE)
+        semi_par_est[n_boot, ] = mom_est_boot$pi.hat
+      }
 
-    for(n_boot in 1 : n_bootstrap)
-    {
-      passage_moments_boot = get_passage_moments(passage_data=mn_boot_2sqrt[[n_boot]])
+      for(n_boot in 1 : n_bootstrap)
+      {
+        passage_moments_boot = get_passage_moments(passage_data=mn_boot_2sqrt[[n_boot]])
 
-      mom_est_boot = estimate_mom(passage_data=mn_boot_2sqrt[[n_boot]],
-                                  passage_moments=passage_moments_boot,
-                                  significance_level=significance_level,
-                                  return_ci=FALSE)
-      mn_boot_2sqrt_est[n_boot, ] = mom_est_boot$pi.hat
-    }
+        mom_est_boot = estimate_mom(passage_data=mn_boot_2sqrt[[n_boot]],
+                                    passage_moments=passage_moments_boot,
+                                    significance_level=significance_level,
+                                    return_ci=FALSE)
+        mn_boot_2sqrt_est[n_boot, ] = mom_est_boot$pi.hat
+      }
 
-    for(n_boot in 1 : n_bootstrap)
-    {
-      passage_moments_boot = get_passage_moments(passage_data=mn_boot_23[[n_boot]])
+      for(n_boot in 1 : n_bootstrap)
+      {
+        passage_moments_boot = get_passage_moments(passage_data=mn_boot_23[[n_boot]])
 
-      mom_est_boot = estimate_mom(passage_data=mn_boot_23[[n_boot]],
-                                  passage_moments=passage_moments_boot,
-                                  significance_level=significance_level,
-                                  return_ci=FALSE)
-      mn_boot_23_est[n_boot, ] = mom_est_boot$pi.hat
+        mom_est_boot = estimate_mom(passage_data=mn_boot_23[[n_boot]],
+                                    passage_moments=passage_moments_boot,
+                                    significance_level=significance_level,
+                                    return_ci=FALSE)
+        mn_boot_23_est[n_boot, ] = mom_est_boot$pi.hat
+      }
     }
 
     result = list("mom_est"=mom_est,

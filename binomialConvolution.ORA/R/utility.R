@@ -20,6 +20,11 @@ generate_counts_par <- function(n_students,
     par_list$fun_name = "rbbinom"
     icc = overdispersion/(size-1)
     par_alpha = prob * (1-icc) / icc
+    # When size is 0, we simply assign alpha=beta=0
+    par_alpha[which(size==0)] = 0
+    # When size is 1, this is just the bernoulli
+    # we assign a large number to alpha
+    par_alpha[which(size==1)] = 1e6
     par_list$fun_args$alpha = par_alpha
     par_list$fun_args$beta = par_alpha * (1/prob - 1)
   }else{
@@ -201,12 +206,15 @@ bootstrap_passages <- function(passage_data,
                                sample_prob=NA)
 {
   result_list = list()
-  for(b in 1 : n_bootstrap)
+  if(n_bootstrap >= 1)
   {
-    result_list[[b]] = resample_passages(passage_data=passage_data,
-                                         true_positive_prob=true_positive_prob,
-                                         true_negative_prob=true_negative_prob,
-                                         sample_prob=sample_prob)
+    for(b in 1 : n_bootstrap)
+    {
+      result_list[[b]] = resample_passages(passage_data=passage_data,
+                                           true_positive_prob=true_positive_prob,
+                                           true_negative_prob=true_negative_prob,
+                                           sample_prob=sample_prob)
+    }
   }
   return(result_list)
 }

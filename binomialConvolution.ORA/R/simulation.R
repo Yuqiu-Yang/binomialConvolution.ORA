@@ -1,14 +1,15 @@
-setwd("/Users/yuqiuianyang/Desktop/work/potgieter/binomialConvolution.ORA/data/simulation/")
-
+setwd("/work/DPDS/s205711/ORA/simulation_misspecification/")
+# setwd("/work/DPDS/s205711/ORA/simulation/")
+source("../binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
 # We first generate simulation settings
 # n_students = 50
 # n_words = c(44, 69)
 # positive_prob = c(0.96, 0.98)
-# positive_overdispersion = c(0, 0.01, 0.06)
-# true_positive_prob = c(0.98, 0.999)
-# true_negative_prob = c(0.75, 0.85)
-# true_positive_overdispersion = 0
-# true_negative_overdispersion = 0
+# positive_overdispersion = c(0, 0.01, 0.06)[c(1,3)]
+# true_positive_prob = c(0.98, 0.999)[1]
+# true_negative_prob = c(0.75, 0.85)[1]
+# true_positive_overdispersion = c(0, 0.01, 0.06)[c(2,3)]
+# true_negative_overdispersion = c(0, 0.01, 0.06)[c(2,3)]
 #
 # simulation_setting = expand.grid(n_students,
 #                                 n_words,
