@@ -51,13 +51,20 @@ generate_counts <- function(positive_prob,
                             n_students=40,
                             n_words=50)
 {
-  positive_par_list = generate_counts_par(n_students=n_students,
-                                          size=n_words,
-                                          prob=positive_prob,
-                                          icc=positive_icc)
-  n_positive = do.call(what=positive_par_list$fun_name,
-                       args=positive_par_list$fun_args)
-
+  pass = FALSE
+  while(!pass)
+  {
+    positive_par_list = generate_counts_par(n_students=n_students,
+                                            size=n_words,
+                                            prob=positive_prob,
+                                            icc=positive_icc)
+    n_positive = do.call(what=positive_par_list$fun_name,
+                         args=positive_par_list$fun_args)
+    if(length(unique(n_positive)) > 1)
+    {
+      pass = TRUE
+    }
+  }
   true_positive_par_list = generate_counts_par(n_students=n_students,
                                                size=n_positive,
                                                prob=true_positive_prob,
@@ -78,9 +85,8 @@ generate_counts <- function(positive_prob,
                       "X"=n_positive,
                       "Y"=observation,
                       "N"=n_words,
-                      "n_positive"=n_positive,
-                      "n_negative"=n_words-n_positive)
-
+                      "n_true_positive"=n_true_positive,
+                      "n_false_positive"=n_false_positive)
   return(result)
 }
 
@@ -137,10 +143,18 @@ resample_passage <- function(passage_data,
     method = "semi-parametric"
     m=n_students
   }
+  pass = FALSE
+  while(!pass)
+  {
+    ind=sample(n_students, size=m, replace=TRUE)
 
-  ind=sample(n_students, size=m, replace=TRUE)
+    n_positive=passage_data$X[ind]
+    if(length(unique(n_positive)) > 1)
+    {
+      pass = TRUE
+    }
+  }
 
-  n_positive=passage_data$X[ind]
   if(method=="semi-parametric")
   {
     true_positive_par_list = generate_counts_par(n_students=n_students,
@@ -160,14 +174,16 @@ resample_passage <- function(passage_data,
     observation = n_true_positive+n_false_positive
   }else{
     observation = passage_data$Y[ind]
+    n_true_positive = passage_data$n_true_positive[ind]
+    n_false_positive = passage_data$n_false_positive[ind]
   }
 
   result = data.frame("passage"=passage_name,
                       "X"=n_positive,
                       "Y"=observation,
                       "N"=n_words,
-                      "n_positive"=n_positive,
-                      "n_negative"=n_words-n_positive)
+                      "n_true_positive"=n_true_positive,
+                      "n_false_positive"=n_false_positive)
 
   return(result)
 }

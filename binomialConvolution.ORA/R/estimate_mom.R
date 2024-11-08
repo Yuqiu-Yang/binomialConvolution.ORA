@@ -21,7 +21,7 @@ estimate_mom <- function(passage_data,
 
   prob_est = c(true_positive_prob, true_negative_prob)
   prob_est = pmax(pmin(prob_est, 1),0)
-  ul = ll = NA
+  ul = ll = SE = NA
   if(return_ci)
   {
     Omega = matrix(0, nrow=4, ncol=4)
@@ -51,7 +51,8 @@ estimate_mom <- function(passage_data,
   }
   return(list("pi.hat"=prob_est,
               "pi.hat.ul"=ul,
-              "pi.hat.ll"=ll))
+              "pi.hat.ll"=ll,
+              "SE"=SE))
 }
 
 
@@ -143,7 +144,7 @@ estimate_gmm <- function(passage_data,
 
   prob_est = gmm_est$par[c(2*P+1,2*P+2)]
   prob_est = pmax(pmin(prob_est, 1),0)
-  ul = ll = NA
+  ul = ll = SE = NA
   if(return_ci)
   {
     SE = sqrt(diag(pinv(gmm_est$hessian)))[c(2*P+1,2*P+2)]
@@ -155,7 +156,8 @@ estimate_gmm <- function(passage_data,
   }
   return(list("pi.hat"=prob_est,
               "pi.hat.ul"=ul,
-              "pi.hat.ll"=ll))
+              "pi.hat.ll"=ll,
+              "SE"=SE))
 }
 
 

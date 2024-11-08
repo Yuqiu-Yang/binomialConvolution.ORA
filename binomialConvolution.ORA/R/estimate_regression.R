@@ -5,8 +5,8 @@ estimate_linear_regression <- function(passage_data,
                                        return_ci=TRUE)
 {
   Y = passage_data$Y
-  X1 = passage_data$n_positive
-  X2 = passage_data$n_negative
+  X1 = passage_data$X
+  X2 = passage_data$N - X1
 
   # Fit a regression model without an intercept
   mod = lm(Y ~ 0 + X1 + X2)
@@ -16,7 +16,7 @@ estimate_linear_regression <- function(passage_data,
   true_positive_prob = pmin(prob_est[1],1)
   true_negative_prob = pmin(prob_est[2],1)
   prob_est = c(true_positive_prob, true_negative_prob)
-  ul = ll = NA
+  ul = ll = SE = NA
   if(return_ci)
   {
     Z = matrix(cbind(X1,X2),ncol=2)
@@ -30,6 +30,7 @@ estimate_linear_regression <- function(passage_data,
   }
   return(list("pi.hat"=unname(prob_est),
               "pi.hat.ul"=unname(ul),
-              "pi.hat.ll"=unname(ll)))
+              "pi.hat.ll"=unname(ll),
+              "SE"=SE))
 }
 

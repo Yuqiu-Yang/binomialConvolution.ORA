@@ -8,7 +8,8 @@ passage_likelihood <- function(par,
   sum_log = 0
   for(r in 1 : nrow(passage_data))
   {
-    n_trials = as.numeric(passage_data[r, c("n_positive", "n_negative")])
+    # n_trials = as.numeric(passage_data[r, c("X", "n_negative")])
+    n_trials = as.numeric(c(passage_data$X[r], passage_data$N[r]-passage_data$X[r]))
     if(n_trials[2] < 1)
     {
       keep = 1
@@ -40,7 +41,8 @@ passage_profile_likelihood <- function(par,
   sum_log = 0
   for(r in 1 : nrow(passage_data))
   {
-    n_trials = as.numeric(passage_data[r, c("n_positive", "n_negative")])
+    # n_trials = as.numeric(passage_data[r, c("n_positive", "n_negative")])
+    n_trials = as.numeric(c(passage_data$X[r], passage_data$N[r]-passage_data$X[r]))
     if(n_trials[2] < 1)
     {
       keep = 1
@@ -108,7 +110,7 @@ estimate_mle <- function(passage_data,
                         control=list(fnscale=-1),
                         method = "BFGS")
   prob_est = 1/(1+exp(-prob_est_optim$par))
-  ul = ll = NA
+  ul = ll = SE = NA
   if(return_ci)
   {
     llh = prob_est_optim$value
@@ -170,11 +172,13 @@ estimate_mle <- function(passage_data,
     )
     ul = c(p1_ul, p2_ul)
     ll = c(p1_ll, p2_ll)
+    SE = c(p1_ul-p1_ll, p2_ul-p2_ll)/2
   }
 
   return(list("pi.hat"=c(prob_est[1], 1-prob_est[2]),
               "pi.hat.ul"=ul,
-              "pi.hat.ll"=ll))
+              "pi.hat.ll"=ll,
+              "SE"=SE))
 }
 
 

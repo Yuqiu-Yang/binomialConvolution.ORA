@@ -1,35 +1,63 @@
-setwd("/work/DPDS/s205711/ORA/simulation_misspecification/")
-# setwd("/work/DPDS/s205711/ORA/simulation/")
+# setwd("/work/DPDS/s205711/ORA/simulation_misspecification/")
+setwd("/work/DPDS/s205711/ORA/simulation/")
 source("../binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
 # We first generate simulation settings
-# n_students = 50
-# n_words = c(44, 69)
-# positive_prob = c(0.96, 0.98)
-# positive_icc = c(0, 0.01, 0.06)[c(1,3)]
-# true_positive_prob = c(0.98, 0.999)[1]
-# true_negative_prob = c(0.75, 0.85)[1]
-# true_positive_icc = c(0, 0.01, 0.06)[c(2,3)]
-# true_negative_icc = c(0, 0.01, 0.06)[c(2,3)]
-#
-# simulation_setting = expand.grid(n_students,
-#                                 n_words,
-#                                 positive_prob,
-#                                 positive_icc,
-#                                 true_positive_prob,
-#                                 true_negative_prob,
-#                                 true_positive_icc,
-#                                 true_negative_icc)
-# colnames(simulation_setting) = c("n_students",
-#                                  "n_words",
-#                                  "positive_prob",
-#                                  "positive_icc",
-#                                  "true_positive_prob",
-#                                  "true_negative_prob",
-#                                  "true_positive_icc",
-#                                  "true_negative_icc")
-#
-# write.csv(simulation_setting,
-#           file="./simulation_setting.csv", row.names = FALSE)
+n_students = 50
+n_words = c(44, 69)
+positive_prob = c(0.96, 0.98)
+positive_icc = c(0, 0.03)
+true_positive_prob = c(0.98, 0.999)
+true_negative_prob = c(0.75, 0.85)
+true_positive_icc = 0
+true_negative_icc = 0
+n_bootstrap = 50
+
+simulation_setting = expand.grid(n_students,
+                                n_words,
+                                positive_prob,
+                                positive_icc,
+                                true_positive_prob,
+                                true_negative_prob,
+                                true_positive_icc,
+                                true_negative_icc,
+                                n_bootstrap)
+
+# We also have simulation settings for misspecification
+n_students = 50
+n_words = c(44, 69)
+positive_prob = c(0.96, 0.98)
+positive_icc = c(0, 0.03)
+true_positive_prob = 0.98
+true_negative_prob = 0.75
+true_positive_icc = c(0.01, 0.06)
+true_negative_icc = c(0.01, 0.06)
+n_bootstrap = 0
+
+simulation_setting1 = expand.grid(n_students,
+                                 n_words,
+                                 positive_prob,
+                                 positive_icc,
+                                 true_positive_prob,
+                                 true_negative_prob,
+                                 true_positive_icc,
+                                 true_negative_icc,
+                                 n_bootstrap)
+
+colnames(simulation_setting) = colnames(simulation_setting1) = c("n_students",
+                                 "n_words",
+                                 "positive_prob",
+                                 "positive_icc",
+                                 "true_positive_prob",
+                                 "true_negative_prob",
+                                 "true_positive_icc",
+                                 "true_negative_icc",
+                                 "n_bootstrap")
+simulation_setting = rbind(simulation_setting,
+                           simulation_setting1)
+
+
+write.csv(simulation_setting,
+          file="./simulation_setting.csv", row.names = FALSE)
 
 set.seed(42)
 ###########################################
