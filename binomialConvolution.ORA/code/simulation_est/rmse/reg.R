@@ -3,9 +3,11 @@
 ###########################################
 rm(list=ls())
 set.seed(42)
-setwd("/work/DPDS/s205711/ORA/rmse_simulation/")
-source("../binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
-source("../binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_regression.R")
+datafolder = "data/simulation/rmse"
+codefolder = "code"
+source(paste0(codefolder, "/utility.R"))
+source(paste0(codefolder, "/estimate_regression.R"))
+setwd(datafolder)
 simulation_setting = read.csv("./simulation_setting.csv")
 n_simulation = 1000
 significance_level = 0.05

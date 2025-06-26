@@ -6,10 +6,12 @@ i_setting_e = as.numeric(args[2])
 # MLE
 ###########################################
 set.seed(42)
-setwd("/work/DPDS/s205711/ORA/rmse_misspec_simulation/")
-source("../binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
-source("../binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_mom.R")
-source("../binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_mle.R")
+datafolder = "data/simulation/rmse_misspec"
+codefolder = "code"
+source(paste0(codefolder, "/utility.R"))
+source(paste0(codefolder, "/estimate_mom.R"))
+source(paste0(codefolder, "./estimate_mle.R"))
+setwd(datafolder)
 simulation_setting = read.csv("./simulation_setting.csv")
 n_simulation = 1000
 significance_level = 0.05

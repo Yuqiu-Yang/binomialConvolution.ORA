@@ -1,5 +1,8 @@
-setwd("/work/DPDS/s205711/ORA/rmse_misspec_simulation/")
-source("../binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
+# Simulate passages for accuracy comparison with misspecification
+datafolder = "data/simulation/rmse_misspec"
+codefolder = "code"
+source(paste0(codefolder, "/utility.R"))
+setwd(datafolder)
 # We first generate simulation settings
 n_students = 50
 n_words = 60

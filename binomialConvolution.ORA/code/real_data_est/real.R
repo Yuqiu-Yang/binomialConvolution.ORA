@@ -1,8 +1,7 @@
 rm(list=ls())
 
-setwd("/work/DPDS/s205711/ORA")
-load("./binomialConvolution.ORA/binomialConvolution.ORA/data/human_ORA.rda")
-load("./binomialConvolution.ORA/binomialConvolution.ORA/data/ai_ORA.rda")
+load("data/real_data/human_ORA.rda")
+load("data/real_data/ai_ORA.rda")
 human_ORA$passage = factor(human_ORA$passage)
 ai_ORA$passage = factor(ai_ORA$passage)
 
@@ -13,20 +12,17 @@ ai_outlier = which(ai_ORA$passage == 'Passage_09')[31]
 human_ORA = human_ORA[-human_outlier, ]
 ai_ORA = ai_ORA[-ai_outlier, ]
 
-source("./binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
-source("./binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_mom.R")
-source("./binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_regression.R")
-
-# install.packages("kStatistics")
-# install.packages("rootSolve")
-# install.packages("/work/DPDS/s205711/ORA/binomialConvolution/binomialConvolution.tar.gz", repos = NULL, type="source")
-source("./binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_mle1.R")
+codefolder = "code"
+source(paste0(codefolder, "/utility.R"))
+source(paste0(codefolder, "/estimate_mom.R"))
+source(paste0(codefolder, "/estimate_regression.R"))
+source(paste0(codefolder, "/estimate_mle.R"))
 
 estimation_procedure = function(passage_data,
                                 p_name=NA,
                                 significance_level=0.05,
-                                n_bootstrap=50,
-                                estimation_method="gmm",
+                                n_bootstrap=2000,
+                                estimation_method="reg",
                                 ...)
 {
   if(estimation_method=="mom")
@@ -47,65 +43,25 @@ estimation_procedure = function(passage_data,
   if(estimation_method == "reg")
   {
     est = est_fun(passage_data=passage_data,
-                 significance_level=significance_level,
-                 return_ci=TRUE)
+                  significance_level=significance_level,
+                  return_ci=TRUE)
   }else{
     passage_moments = get_passage_moments(passage_data=passage_data)
     est = est_fun(passage_data=passage_data,
-                 passage_moments=passage_moments,
-                 significance_level=significance_level,
-                 return_ci=TRUE,
-                 ...)
+                  passage_moments=passage_moments,
+                  significance_level=significance_level,
+                  return_ci=TRUE,
+                  ...)
   }
-  semi_par_boot = bootstrap_passages(passage_data=passage_data,
-                                     true_positive_prob=est$pi.hat[1],
-                                     true_negative_prob=est$pi.hat[2],
-                                     n_bootstrap=n_bootstrap,
-                                     sample_prob=NA)
+
   mn_boot_1 = bootstrap_passages(passage_data=passage_data,
                                  true_positive_prob=NA,
                                  true_negative_prob=NA,
                                  n_bootstrap=n_bootstrap,
                                  sample_prob=1)
 
-  mn_boot_2sqrt = list()
-  for(b in 1 : n_bootstrap)
-  {
-    temp = c()
-    for(p in levels(passage_data$passage))
-    {
-      p_data = resample_passage(passage_data=passage_data,
-                                true_positive_prob=NA,
-                                true_negative_prob=NA,
-                                passage_name=p,
-                                sample_prob=2/sqrt(length(which(passage_data$passage == p))))
-      temp = rbind(temp, p_data)
-    }
-    mn_boot_2sqrt[[b]] = temp
-  }
+  mn_boot_1_est = matrix(0, nrow=n_bootstrap, ncol=2)
 
-  mn_boot_23 = bootstrap_passages(passage_data=passage_data,
-                                  true_positive_prob=NA,
-                                  true_negative_prob=NA,
-                                  n_bootstrap=n_bootstrap,
-                                  sample_prob=2/3)
-  semi_par_est = mn_boot_1_est = mn_boot_2sqrt_est = mn_boot_23_est = matrix(0, nrow=n_bootstrap, ncol=2)
-  for(n_boot in 1 : n_bootstrap)
-  {
-    if(estimation_method == "reg")
-    {
-      est_boot = est_fun(passage_data=semi_par_boot[[n_boot]],
-                          significance_level=significance_level,
-                          return_ci=FALSE)
-    }else{
-      passage_moments_boot = get_passage_moments(passage_data=semi_par_boot[[n_boot]])
-      est_boot = est_fun(passage_data=semi_par_boot[[n_boot]],
-                    passage_moments=passage_moments_boot,
-                    significance_level=significance_level,
-                    return_ci=FALSE, ...)
-    }
-    semi_par_est[n_boot, ] = est_boot$pi.hat
-  }
   ##### Regular
   for(n_boot in 1 : n_bootstrap)
   {
@@ -123,46 +79,9 @@ estimation_procedure = function(passage_data,
     }
     mn_boot_1_est[n_boot, ] = est_boot$pi.hat
   }
-  ##### 2sqrt(n)
-  for(n_boot in 1 : n_bootstrap)
-  {
-    if(estimation_method == "reg")
-    {
-      est_boot = est_fun(passage_data=mn_boot_2sqrt[[n_boot]],
-                         significance_level=significance_level,
-                         return_ci=FALSE)
-    }else{
-      passage_moments_boot = get_passage_moments(passage_data=mn_boot_2sqrt[[n_boot]])
-      est_boot = est_fun(passage_data=mn_boot_2sqrt[[n_boot]],
-                         passage_moments=passage_moments_boot,
-                         significance_level=significance_level,
-                         return_ci=FALSE, ...)
-    }
-    mn_boot_2sqrt_est[n_boot, ] = est_boot$pi.hat
-  }
-  ##### 23
-  for(n_boot in 1 : n_bootstrap)
-  {
-    if(estimation_method == "reg")
-    {
-      est_boot = est_fun(passage_data=mn_boot_23[[n_boot]],
-                         significance_level=significance_level,
-                         return_ci=FALSE)
-    }else{
-      passage_moments_boot = get_passage_moments(passage_data=mn_boot_23[[n_boot]])
-      est_boot = est_fun(passage_data=mn_boot_23[[n_boot]],
-                         passage_moments=passage_moments_boot,
-                         significance_level=significance_level,
-                         return_ci=FALSE, ...)
-    }
-    mn_boot_23_est[n_boot, ] = est_boot$pi.hat
-  }
 
   result = list("est"=est,
-                "semi_par_est"=semi_par_est,
-                "mn_boot_1_est"=mn_boot_1_est,
-                "mn_boot_2sqrt_est"=mn_boot_2sqrt_est,
-                "mn_boot_23_est"=mn_boot_23_est)
+                "mn_boot_1_est"=mn_boot_1_est)
   return(result)
 }
 
@@ -205,9 +124,9 @@ estimation = function(passage_data,
 }
 
 significance_level = 0.05
-n_bootstrap = 50
+n_bootstrap = 2000
 set.seed(42)
-for(method in c("mle"))
+for(method in c("reg", "gmm", "mle"))
 {
   result = list('human'=list(),
                 "ai"=list())
@@ -219,9 +138,8 @@ for(method in c("mle"))
                          estimation_method = method,
                          significance_level = significance_level,
                          n_bootstrap=n_bootstrap)
-  saveRDS(result, file=paste0("./real_result/",method, "_result.rds"))
+  saveRDS(result, file=paste0("./real_result_ci/",method, "_result.rds"))
 }
-
 
 # For MLE, we further compute AIC and BIC
 
@@ -280,14 +198,13 @@ for(type in c("human", "ai"))
   cat(bic_same, bic_diff)
 
   result[[type]]$summary = list("same_prob_lk"=same_prob_lk,
-                        "diff_prob_lk"=diff_prob_lk,
-                        "aic_same"=aic_same,
-                        "aic_diff"=aic_diff,
-                        "bic_same"=bic_same,
-                        "bic_diff"=bic_diff)
+                                "diff_prob_lk"=diff_prob_lk,
+                                "aic_same"=aic_same,
+                                "aic_diff"=aic_diff,
+                                "bic_same"=bic_same,
+                                "bic_diff"=bic_diff)
 }
-type = "human"
 
 
+saveRDS(result, file=paste0("./real_result_ci/mle_result_w_ic.rds"))
 
-saveRDS(result, file=paste0("./real_result/mle_result_w_ic.rds"))

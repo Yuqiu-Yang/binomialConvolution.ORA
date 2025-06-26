@@ -1,22 +1,27 @@
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=TRUE)
+i_setting_s = as.numeric(args[1])
+i_setting_e = as.numeric(args[2])
 ###########################################
-# GMM
+# MLE
 ###########################################
-rm(list=ls())
 set.seed(42)
-setwd("/work/DPDS/s205711/ORA/simulation/")
-# setwd("/work/DPDS/s205711/ORA/simulation_misspecification/")
-source("../binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
-source("../binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_mom.R")
+datafolder = "data/simulation/se"
+codefolder = "code"
+source(paste0(codefolder, "/utility.R"))
+source(paste0(codefolder, "/estimate_mom.R"))
+source(paste0(codefolder, "./estimate_mle.R"))
+setwd(datafolder)
 simulation_setting = read.csv("./simulation_setting.csv")
 n_simulation = 1000
 significance_level = 0.05
-for(i_setting in 1 : nrow(simulation_setting))
+for(i_setting in i_setting_s : i_setting_e)
 {
   setting_folder = paste0("./setting_", i_setting)
   n_bootstrap = simulation_setting$n_bootstrap[i_setting]
   for(i_simulation in 1 : n_simulation)
   {
-    if(paste0("passage_", i_simulation, "_gmm_result.rds") %in%
+    if(paste0("passage_", i_simulation, "_mle_result.rds") %in%
        list.files(paste0("./setting_",i_setting, "/passage_est/")))
     {
       next
@@ -25,8 +30,7 @@ for(i_setting in 1 : nrow(simulation_setting))
     passage_data = readRDS(paste0(file_name, ".rds"))
 
     passage_moments = get_passage_moments(passage_data=passage_data)
-
-    gmm_est = estimate_gmm(passage_data=passage_data,
+    mle_est = estimate_mle(passage_data=passage_data,
                            passage_moments=passage_moments,
                            significance_level=significance_level,
                            return_ci=TRUE)
@@ -39,8 +43,8 @@ for(i_setting in 1 : nrow(simulation_setting))
         expr = {
           # Bootstrap
           semi_par_boot = bootstrap_passages(passage_data=passage_data,
-                                             true_positive_prob=gmm_est$pi.hat[1],
-                                             true_negative_prob=gmm_est$pi.hat[2],
+                                             true_positive_prob=mle_est$pi.hat[1],
+                                             true_negative_prob=mle_est$pi.hat[2],
                                              n_bootstrap=n_bootstrap,
                                              sample_prob=NA)
           mn_boot_1 = bootstrap_passages(passage_data=passage_data,
@@ -65,44 +69,43 @@ for(i_setting in 1 : nrow(simulation_setting))
             {
               passage_moments_boot = get_passage_moments(passage_data=semi_par_boot[[n_boot]])
 
-              gmm_est_boot = estimate_gmm(passage_data=semi_par_boot[[n_boot]],
+              mle_est_boot = estimate_mle(passage_data=semi_par_boot[[n_boot]],
                                           passage_moments=passage_moments_boot,
                                           significance_level=significance_level,
                                           return_ci=FALSE)
-              semi_par_est[n_boot, ] = gmm_est_boot$pi.hat
+              semi_par_est[n_boot, ] = mle_est_boot$pi.hat
             }
             ##### Regular
             for(n_boot in 1 : n_bootstrap)
             {
               passage_moments_boot = get_passage_moments(passage_data=mn_boot_1[[n_boot]])
 
-              gmm_est_boot = estimate_gmm(passage_data=mn_boot_1[[n_boot]],
+              mom_est_boot = estimate_mle(passage_data=mn_boot_1[[n_boot]],
                                           passage_moments=passage_moments_boot,
                                           significance_level=significance_level,
                                           return_ci=FALSE)
-              mn_boot_1_est[n_boot, ] = gmm_est_boot$pi.hat
+              mn_boot_1_est[n_boot, ] = mom_est_boot$pi.hat
             }
-
             for(n_boot in 1 : n_bootstrap)
             {
               passage_moments_boot = get_passage_moments(passage_data=mn_boot_2sqrt[[n_boot]])
 
-              gmm_est_boot = estimate_gmm(passage_data=mn_boot_2sqrt[[n_boot]],
+              mle_est_boot = estimate_mle(passage_data=mn_boot_2sqrt[[n_boot]],
                                           passage_moments=passage_moments_boot,
                                           significance_level=significance_level,
                                           return_ci=FALSE)
-              mn_boot_2sqrt_est[n_boot, ] = gmm_est_boot$pi.hat
+              mn_boot_2sqrt_est[n_boot, ] = mle_est_boot$pi.hat
             }
 
             for(n_boot in 1 : n_bootstrap)
             {
               passage_moments_boot = get_passage_moments(passage_data=mn_boot_23[[n_boot]])
 
-              gmm_est_boot = estimate_gmm(passage_data=mn_boot_23[[n_boot]],
+              mle_est_boot = estimate_mle(passage_data=mn_boot_23[[n_boot]],
                                           passage_moments=passage_moments_boot,
                                           significance_level=significance_level,
                                           return_ci=FALSE)
-              mn_boot_23_est[n_boot, ] = gmm_est_boot$pi.hat
+              mn_boot_23_est[n_boot, ] = mle_est_boot$pi.hat
             }
           }
           est_success = TRUE
@@ -114,12 +117,14 @@ for(i_setting in 1 : nrow(simulation_setting))
       )
     }
 
-    result = list("gmm_est"=gmm_est,
+    result = list("mle_est"=mle_est,
                   "semi_par_est"=semi_par_est,
                   "mn_boot_1_est"=mn_boot_1_est,
                   "mn_boot_2sqrt_est"=mn_boot_2sqrt_est,
                   "mn_boot_23_est"=mn_boot_23_est)
     file_name = paste0(setting_folder, "/passage_est/passage_", i_simulation)
-    saveRDS(result, file=paste0(file_name, "_gmm_result.rds"))
+    saveRDS(result, file=paste0(file_name, "_mle_result.rds"))
   }
 }
+
+

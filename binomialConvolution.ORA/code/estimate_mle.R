@@ -172,7 +172,7 @@ estimate_mle <- function(passage_data,
     )
     ul = c(p1_ul, p2_ul)
     ll = c(p1_ll, p2_ll)
-    SE = c(p1_ul-p1_ll, p2_ul-p2_ll)/2/qnorm(0.975)
+    SE = c(p1_ul-p1_ll, p2_ul-p2_ll)/2/qnorm(1-significance_level/2)
   }
 
   return(list("pi.hat"=c(prob_est[1], 1-prob_est[2]),
