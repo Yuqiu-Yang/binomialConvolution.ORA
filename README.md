@@ -9,8 +9,32 @@ Assuming the availability of both contaminated and error-free scores on a subset
 
 In practice, this framework supports improved inference in unsupervised settings where contaminated scores serve as inputs to downstream analyses. By quantifying accuracy rates, the model enables score corrections even when no specific outcome is yet defined. We demonstrate its utility using real oral reading fluency data, comparing human and AI-generated scores. Findings highlight the practical implications of estimator choice and underscore the importance of explicitly modeling asymmetric measurement error in count data. 
 
-## Repo structure 
+## Before you start
 
+To carry out MLE for a Binomial Convolution distribution, you will first need to install our `binomialConvolution` R package. You can find the details [here](https://github.com/Yuqiu-Yang/binomialConvolution).
+
+
+## `code` folder
+
+The `code` folder contains the code snippets to reproduce the results in our paper. The data we generated are accessible on [Zenodo](https://doi.org/10.5281/zenodo.15750744).
+
+In this folder, you will find several `.R` files. They are repeated called to either simulate passage data or to carry out estimation using different methods.
+
+### `code/passage_simulation` subfolder
+
+In this subfolder, there are three `.R` files used to simulate passages under different settings.
+
+### `code/simulation_est` subfolder
+
+For the three scenarios, we created three subfolders `rmse`, `rmse_misspec`, and `se` to contain the code needed for estimating the coefficients in our model with `gmm`, `mle`, and `reg`.
+
+### `code/real_data_est` subfolder
+
+Similar to the `code/simulation_est`, this one contains the code for estimating the coefficients in our model with `gmm`, `mle`, and `reg` with the real data.
+
+### `code/analysis` subfolder
+
+These scripts will take the estimations generated from the previous two steps and compute various metrics. The filenames should be self-explanatory enough. 
 
 
 ## Citation :book:
