@@ -96,13 +96,21 @@ profile_likelihood_ci <- function(fixed_success_probs,
 estimate_mle <- function(passage_data,
                          passage_moments,
                          significance_level=0.05,
-                         return_ci=TRUE)
+                         return_ci=TRUE,
+                         initial_prob=NA)
 {
-  mom.est = estimate_mom(passage_data=passage_data,
-                         passage_moments=passage_moments,
-                         significance_level=significance_level,
-                         return_ci=FALSE)
-  probs=pmax(pmin(mom.est$pi.hat,0.99),0.001)
+  if(any(is.na(initial_prob)))
+  {
+    mom.est = estimate_mom(passage_data=passage_data,
+                           passage_moments=passage_moments,
+                           significance_level=significance_level,
+                           return_ci=FALSE)
+    probs=pmax(pmin(mom.est$pi.hat,0.99),0.001)
+  }else{
+    cat("Using initial prob:", initial_prob)
+    probs=initial_prob
+  }
+
   probs[2]=1-probs[2]
   prob_est_optim = optim(par=log(probs/(1-probs)),
                         fn=passage_likelihood,
@@ -172,7 +180,7 @@ estimate_mle <- function(passage_data,
     )
     ul = c(p1_ul, p2_ul)
     ll = c(p1_ll, p2_ll)
-    SE = c(p1_ul-p1_ll, p2_ul-p2_ll)/2/qnorm(0.975)
+    SE = c(p1_ul-p1_ll, p2_ul-p2_ll)/2
   }
 
   return(list("pi.hat"=c(prob_est[1], 1-prob_est[2]),

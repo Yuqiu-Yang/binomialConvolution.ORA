@@ -1,0 +1,150 @@
+rm(list=ls())
+
+setwd("/work/DPDS/s205711/ORA")
+load("./binomialConvolution.ORA/binomialConvolution.ORA/data/human_ORA.rda")
+load("./binomialConvolution.ORA/binomialConvolution.ORA/data/ai_ORA.rda")
+human_ORA$passage = factor(human_ORA$passage)
+ai_ORA$passage = factor(ai_ORA$passage)
+
+## Remove two influential points
+human_outlier = which(human_ORA$passage == 'Passage_08')[15]
+ai_outlier = which(ai_ORA$passage == 'Passage_09')[31]
+
+human_ORA = human_ORA[-human_outlier, ]
+ai_ORA = ai_ORA[-ai_outlier, ]
+
+
+source("./binomialConvolution.ORA/binomialConvolution.ORA/R/utility.R")
+source("./binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_mom.R")
+source("./binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_regression.R")
+
+# install.packages("kStatistics")
+# install.packages("rootSolve")
+# install.packages("/work/DPDS/s205711/ORA/binomialConvolution/binomialConvolution.tar.gz", repos = NULL, type="source")
+source("./binomialConvolution.ORA/binomialConvolution.ORA/R/estimate_mle.R")
+
+estimation_procedure = function(passage_data,
+                                p_name=NA,
+                                significance_level=0.05,
+                                n_bootstrap=2000,
+                                estimation_method="reg",
+                                ...)
+{
+  if(estimation_method=="mom")
+  {
+    est_fun = estimate_mom
+  }else if(estimation_method=="reg"){
+    est_fun = estimate_linear_regression
+  }else if(estimation_method=='gmm'){
+    est_fun = estimate_gmm
+  }else{
+    est_fun = estimate_mle
+  }
+  result = list()
+  if(!is.na(p_name))
+  {
+    passage_data = droplevels(passage_data[which(passage_data$passage == p_name), ])
+  }
+  if(estimation_method == "reg")
+  {
+    est = est_fun(passage_data=passage_data,
+                  significance_level=significance_level,
+                  return_ci=TRUE)
+  }else{
+    passage_moments = get_passage_moments(passage_data=passage_data)
+    est = est_fun(passage_data=passage_data,
+                  passage_moments=passage_moments,
+                  significance_level=significance_level,
+                  return_ci=TRUE,
+                  ...)
+  }
+
+  mn_boot_1 = bootstrap_passages(passage_data=passage_data,
+                                 true_positive_prob=NA,
+                                 true_negative_prob=NA,
+                                 n_bootstrap=n_bootstrap,
+                                 sample_prob=1)
+
+  mn_boot_1_est = matrix(0, nrow=n_bootstrap, ncol=2)
+
+  ##### Regular
+  for(n_boot in 1 : n_bootstrap)
+  {
+    if(estimation_method == "reg")
+    {
+      est_boot = est_fun(passage_data=mn_boot_1[[n_boot]],
+                         significance_level=significance_level,
+                         return_ci=FALSE)
+    }else{
+      passage_moments_boot = get_passage_moments(passage_data=mn_boot_1[[n_boot]])
+      est_boot = est_fun(passage_data=mn_boot_1[[n_boot]],
+                         passage_moments=passage_moments_boot,
+                         significance_level=significance_level,
+                         return_ci=FALSE, ...)
+    }
+    mn_boot_1_est[n_boot, ] = est_boot$pi.hat
+  }
+
+  result = list("est"=est,
+                "mn_boot_1_est"=mn_boot_1_est)
+  return(result)
+}
+
+
+
+estimation = function(passage_data,
+                      estimation_method,
+                      significance_level=0.05,
+                      n_bootstrap=50)
+{
+  result = list("same_est"=list(),
+                "diff_est"=list())
+
+  result$same_est = estimation_procedure(passage_data=passage_data,
+                                         p_name=NA,
+                                         significance_level = significance_level,
+                                         n_bootstrap = n_bootstrap,
+                                         estimation_method=estimation_method)
+
+  for(p_name in levels(passage_data$passage))
+  {
+    if(estimation_method=="mle")
+    {
+      result$diff_est[[p_name]] = estimation_procedure(passage_data=passage_data,
+                                                       p_name=p_name,
+                                                       significance_level = significance_level,
+                                                       n_bootstrap=n_bootstrap,
+                                                       estimation_method=estimation_method,
+                                                       initial_prob=result$same_est$est$pi.hat)
+    }else{
+      result$diff_est[[p_name]] = estimation_procedure(passage_data=passage_data,
+                                                       p_name=p_name,
+                                                       significance_level = significance_level,
+                                                       n_bootstrap=n_bootstrap,
+                                                       estimation_method=estimation_method)
+    }
+
+  }
+  return(result)
+}
+
+significance_level = 0.05
+n_bootstrap = 2000
+set.seed(42)
+for(method in c("reg", "gmm"))
+{
+  result = list('human'=list(),
+                "ai"=list())
+  result$human = estimation(passage_data = human_ORA,
+                            estimation_method = method,
+                            significance_level = significance_level,
+                            n_bootstrap=n_bootstrap)
+  result$ai = estimation(passage_data = ai_ORA,
+                         estimation_method = method,
+                         significance_level = significance_level,
+                         n_bootstrap=n_bootstrap)
+  saveRDS(result, file=paste0("./real_result_ci/",method, "_result.rds"))
+}
+
+
+

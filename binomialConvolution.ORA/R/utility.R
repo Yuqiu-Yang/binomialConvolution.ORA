@@ -176,6 +176,10 @@ resample_passage <- function(passage_data,
     observation = passage_data$Y[ind]
     n_true_positive = passage_data$n_true_positive[ind]
     n_false_positive = passage_data$n_false_positive[ind]
+    if((length(n_true_positive) < 1) | ((length(n_false_positive) < 1)))
+    {
+      n_true_positive = n_false_positive = NA
+    }
   }
 
   result = data.frame("passage"=passage_name,
